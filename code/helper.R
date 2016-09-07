@@ -1,5 +1,21 @@
 
-# Prepare depth-wise box-and-whisker plots ####
+# Start OS dependent GRASS GIS ----
+if (.Platform$OS.type == "unix") {
+  gisBase <- "/usr/lib/grass70/"
+} else {
+  gisBase <- "C:/Program Files (x86)/GRASS GIS 7.0.4-1"
+}
+
+# OS dependent function to run GRASS features ----
+grassGis <- function (cmd) {
+  if (.Platform$OS.type == "unix") {
+    system(cmd)
+  } else {
+    shell(cmd)
+  }
+}
+
+# Prepare depth-wise box-and-whisker plots -----
 depth_bwplot <-
   function (pts = pointData, vars = c("TOOC", "TOCA", "TOPH"), ...) {
     
