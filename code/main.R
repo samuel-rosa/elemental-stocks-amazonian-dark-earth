@@ -35,3 +35,13 @@ sp::coordinates(pointData) <- ~ x + y
 sp::proj4string(pointData) <- sp::CRS("+init=epsg:32720")
 sp::plot(pointData, pch = 20, cex = 0.3)
 
+# Check depth-wise empirical distribution
+p <- depth_bwplot(pts = pointData, layout = c(3, 1))
+p$index.cond[[1]] <- c(2, 1, 3)
+p$condlevels$ind <- c("Ca", "TOC", "P")
+dev.off()
+png(paste("res/fig/box-and-whisker.png", sep = ""), width = 1200, height = 480, res = 150)
+p
+dev.off()
+rm(p)
+
