@@ -94,3 +94,59 @@ toph_anova <- get_lm_output(soil_var = soil_var, sv = "TOPH")
 # Save anova and lm results in a csv file
 res_anova <- rbind(cbind("tooc",  tooc_anova), cbind("toca", toca_anova), cbind("toph", toph_anova))
 write.csv(res_anova, file = "res/tab/anova.csv")
+
+rm(soil_var, res_anova, tooc_anova, toca_anova, toph_anova)
+
+# Stochastic component of spatial variation ###################################################################
+
+depth <- unique(pointData$d)
+range <- c(50, 75, 100)
+
+# TOTAL ORGANIC CARBON
+sv <- "TOOC"
+tooc_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
+tooc_vario <- compute_sample_variogram(soil_data = tooc_data, sv = sv)
+plot(tooc_vario$v, scales = list(relation = "same"), pch = 20, cex = 0.5, type = "b")
+
+# fit alternative models
+tooc_cross <- parallel::mclapply(1:length(range), function (i)
+  gstat::gstat(
+    tooc_vario$g, id = paste(sv, ".", depth[1], sep = ""),
+    model = gstat::vgm(psill = 0.9, model = "Exp", range = range[i], nugget = 0.1), fill.all = TRUE))
+tooc_lmc <- parallel::mclapply(1:length(tooc_cross), function (i)
+  gstat::fit.lmc(v = tooc_vario$v, g = tooc_cross[[i]], correct.diagonal = 1.01))
+
+# cross-validation
+# A range of 50 m produces more accurate predictions (lower mean error), but a range of 100 m produces more
+# precise predictions (lower squared error and absolute error), except for the top layer. A reasonable choice
+# is to use an intermediate value, i.e. 75 m.
+tooc_cv <- parallel::mclapply(
+  tooc_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, all.residuals = TRUE,
+  boundaries = attr(tooc_vario$v, "boundaries"), correct.diagonal = 1.01)
+tooc_cv <- list(me = round(do.call(rbind, lapply(tooc_cv, colMeans)), 4),
+                se = round(do.call(rbind, lapply(lapply(tooc_cv, function (x) x ^ 2), colMeans)), 4),
+                ae = round(do.call(rbind, lapply(lapply(tooc_cv, abs), colMeans)), 4))
+lapply(tooc_cv, function (x) apply(x, 2, function (x) which.min(abs(x))))
+lapply(tooc_cv, function (x) apply(x, 2, function (x) which.max(abs(x))))
+tooc_cv <- tooc_cv[[2]]
+tooc_lmc <- tooc_lmc[[2]]
+plot(tooc_vario$v, tooc_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
+
+# prepare variogram plot
+tooc_plot <- plot(
+  tooc_vario$v[which(tooc_vario$v$id %in% names(tooc_lmc$data)), ],
+  tooc_lmc$model[names(tooc_lmc$data)],
+  scales = list(relation = "same"), pch = 20, cex = 0.5, layout = c(1, 5), col = "black",
+  strip = lattice::strip.custom(bg = "lightgray"))
+tooc_plot$condlevels$id <- gsub("TOOC", "C", tooc_plot$condlevels$id)
+
+# save results
+save(tooc_vario, tooc_lmc, file = "data/R/tooc_vario.rda")
+
+# make spatial predictions
+t0 <- proc.time()
+tooc_pred <- predict(object = tooc_lmc, newdata = covar)
+proc.time() - t0
+# tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data, depth = depth, n.sim = 10000)
+save(tooc_pred, file = "data/R/tooc_pred.rda")
+

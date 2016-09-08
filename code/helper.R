@@ -137,3 +137,81 @@ get_lm_output <-
     
     return (tmp)
   }
+
+# Compute empirical variogram ----
+compute_sample_variogram <- 
+  function (soil_data, sv = "TOOC", depth = seq(10, 90, 20)) {
+    
+    # Define model formula
+    # We model every soil property as a linear function of the covariate
+    form <- lapply(1:length(depth), function (i) paste(sv, ".", depth[i], " ~ past_landuse", sep = ""))
+    form <- lapply(form, as.formula)
+    
+    # Create gstat object
+    for (i in 1:length(depth)) {
+      if (i == 1) {
+        g <- gstat::gstat(NULL, id = paste(sv, ".", depth[i], sep = ""), data = soil_data, form = form[[i]])
+      } else {
+        g <- gstat::gstat(g, id = paste(sv, ".", depth[i], sep = ""), data = soil_data, form = form[[i]])
+      }
+    }
+    
+    # Compute lag-distance classes
+    lags <- pedometrics::vgmLags(soil_data@coords, n = 5)[-1]
+    
+    # Compute empirical direct and cross-variograms
+    v <- gstat::variogram(g, boundaries = lags)
+    
+    return (list(g = g, v = v))
+  }
+
+# Back-transform predictions ----
+back_transform <- 
+  function (pred, soil_data, depth = seq(10, 90, 20), n.sim = 10000) {
+    
+    # Identify the columns of 'predgrid' containing the predictions and prediction error variances
+    id_mean <- seq(1, 9, 2)
+    id_sd <- seq(2, 10, 2)
+    
+    # Rescale predictions
+    pred@data[, id_mean] <- 
+      lapply(1:length(depth), function (i) 
+        (pred@data[, id_mean[i]] * attr(soil_data, "sv_sd")[i]) + attr(soil_data, "sv_mean")[i])
+    
+    # Rescale prediction error variance (now standard deviation)
+    pred@data[, id_sd] <- 
+      lapply(1:length(depth), function (i) 
+        sqrt(pred@data[, id_sd[i]]) * attr(soil_data, "sv_sd")[i])
+
+    for (i in 1:length(depth)) {
+
+      # Check which cells are not NA
+      n <- which(!is.na(pred@data[, id_mean[i]]))
+
+      # Set a progress bar
+      pb <- txtProgressBar(min = 1, max = length(n), style = 3)
+      k <- 0
+
+      # Start loop over prediction locations
+      for (j in n) {
+        k <- k + 1
+
+        # Simulate n values at the j-th prediction locations
+        sim <- geoR::rboxcox(
+        n = n.sim, lambda = attr(soil_data, "lambda")[i],
+        mean = pred@data[j, id_mean[i]], sd = pred@data[j, id_sd[i]])
+
+        # Replace the predicted value with the mean of the n simulated values
+        pred@data[j, id_mean[i]] <- mean(sim) - 1
+
+        # Replace the prediction error standard deviation with the standard deviation
+        # of the n simulated values
+        pred@data[j, id_sd[i]] <- sd(sim)
+
+        setTxtProgressBar(pb, k)
+      }
+      close(pb)
+    }
+
+    return (pred)
+  }
