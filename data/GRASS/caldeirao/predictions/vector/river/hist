@@ -1,3 +1,0 @@
-COMMAND: v.in.ogr dsn="data/GRASS/caldeirao/predictions/.tmp/lgcs-mds" output="river" layer="river" min_area=0.0001 snap=-1
-GISDBASE: data/GRASS
-LOCATION: caldeirao MAPSET: predictions USER: lgcs-mds DATE: Tue Apr  5 16:39:49 2016
