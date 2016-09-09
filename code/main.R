@@ -102,43 +102,46 @@ rm(soil_var, res_anova, tooc_anova, toca_anova, toph_anova)
 depth <- unique(pointData$d)
 range <- c(50, 75, 100)
 
-# TOTAL ORGANIC CARBON
+# TOTAL ORGANIC CARBON ----
 sv <- "TOOC"
 tooc_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
-tooc_vario <- compute_sample_variogram(soil_data = tooc_data, sv = sv)
-plot(tooc_vario$v, scales = list(relation = "same"), pch = 20, cex = 0.5, type = "b")
+colnames(tooc_data@data) <- gsub("TOOC", "C", colnames(tooc_data@data))
+colnames(tooc_data@data) <- gsub("10", "1", colnames(tooc_data@data))
+colnames(tooc_data@data) <- gsub("30", "2", colnames(tooc_data@data))
+colnames(tooc_data@data) <- gsub("50", "3", colnames(tooc_data@data))
+colnames(tooc_data@data) <- gsub("70", "4", colnames(tooc_data@data))
+colnames(tooc_data@data) <- gsub("90", "5", colnames(tooc_data@data))
+sv <- "C"
 
-# fit alternative models
+# fit competing cross-variogram models
+tooc_vario <- compute_sample_variogram(soil_data = tooc_data, sv = sv, cross = TRUE)
+plot(tooc_vario$v, scales = list(relation = "same"), pch = 20, cex = 0.5)
 tooc_cross <- parallel::mclapply(1:length(range), function (i)
   gstat::gstat(
     tooc_vario$g, id = paste(sv, ".", depth[1], sep = ""),
-    model = gstat::vgm(psill = 0.9, model = "Exp", range = range[i], nugget = 0.1), fill.all = TRUE))
+    model = gstat::vgm(psill = 0.8, model = "Exp", range = range[i], nugget = 0.2), fill.all = TRUE))
 tooc_lmc <- parallel::mclapply(1:length(tooc_cross), function (i)
   gstat::fit.lmc(v = tooc_vario$v, g = tooc_cross[[i]], correct.diagonal = 1.01))
 
 # cross-validation
-# A range of 50 m produces more accurate predictions (lower mean error), but a range of 100 m produces more
-# precise predictions (lower squared error and absolute error), except for the top layer. A reasonable choice
-# is to use an intermediate value, i.e. 75 m.
 tooc_cv <- parallel::mclapply(
   tooc_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, all.residuals = TRUE,
   boundaries = attr(tooc_vario$v, "boundaries"), correct.diagonal = 1.01)
-tooc_cv <- list(me = round(do.call(rbind, lapply(tooc_cv, colMeans)), 4),
-                se = round(do.call(rbind, lapply(lapply(tooc_cv, function (x) x ^ 2), colMeans)), 4),
-                ae = round(do.call(rbind, lapply(lapply(tooc_cv, abs), colMeans)), 4))
-lapply(tooc_cv, function (x) apply(x, 2, function (x) which.min(abs(x))))
-lapply(tooc_cv, function (x) apply(x, 2, function (x) which.max(abs(x))))
-tooc_cv <- tooc_cv[[2]]
-tooc_lmc <- tooc_lmc[[2]]
+tooc_cv <- round(do.call(rbind, lapply(tooc_cv, colMeans)), 4)
+apply(abs(tooc_cv), 2, which.min)
+apply(abs(tooc_cv), 2, which.max)
+tooc_cv <- tooc_cv[[1]]
+tooc_lmc <- tooc_lmc[[1]]
 plot(tooc_vario$v, tooc_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
 
 # prepare variogram plot
-tooc_plot <- plot(
-  tooc_vario$v[which(tooc_vario$v$id %in% names(tooc_lmc$data)), ],
-  tooc_lmc$model[names(tooc_lmc$data)],
-  scales = list(relation = "same"), pch = 20, cex = 0.5, layout = c(1, 5), col = "black",
-  strip = lattice::strip.custom(bg = "lightgray"))
-tooc_plot$condlevels$id <- gsub("TOOC", "C", tooc_plot$condlevels$id)
+tooc_plot <- 
+  plot(tooc_vario$v, tooc_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, col = "black", 
+       strip = lattice::strip.custom(bg = "lightgray"), xlab = "Distance (m)", ylab = "Semivariance")
+dev.off()
+png("res/fig/tooc_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
+tooc_plot
+dev.off()
 
 # save results
 save(tooc_vario, tooc_lmc, file = "data/R/tooc_vario.rda")
@@ -150,3 +153,177 @@ proc.time() - t0
 # tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data, depth = depth, n.sim = 10000)
 save(tooc_pred, file = "data/R/tooc_pred.rda")
 
+# TOTAL CALCIUM ----
+sv <- "TOCA"
+toca_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
+colnames(toca_data@data) <- gsub("TOCA", "Ca", colnames(toca_data@data))
+colnames(toca_data@data) <- gsub("10", "1", colnames(toca_data@data))
+colnames(toca_data@data) <- gsub("30", "2", colnames(toca_data@data))
+colnames(toca_data@data) <- gsub("50", "3", colnames(toca_data@data))
+colnames(toca_data@data) <- gsub("70", "4", colnames(toca_data@data))
+colnames(toca_data@data) <- gsub("90", "5", colnames(toca_data@data))
+sv <- "Ca"
+
+# fit competing cross-variogram models
+toca_vario <- compute_sample_variogram(soil_data = toca_data, sv = sv, cross = TRUE)
+plot(toca_vario$v, scales = list(relation = "same"), pch = 20, cex = 0.5)
+toca_cross <- parallel::mclapply(1:length(range), function (i)
+  gstat::gstat(
+    toca_vario$g, id = paste(sv, ".", depth[1], sep = ""),
+    model = gstat::vgm(psill = 0.8, model = "Exp", range = range[i], nugget = 0.2), fill.all = TRUE))
+toca_lmc <- parallel::mclapply(1:length(toca_cross), function (i)
+  gstat::fit.lmc(v = toca_vario$v, g = toca_cross[[i]], correct.diagonal = 1.01))
+
+# cross-validation
+toca_cv <- parallel::mclapply(
+  toca_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, all.residuals = TRUE,
+  boundaries = attr(toca_vario$v, "boundaries"), correct.diagonal = 1.01)
+toca_cv <- round(do.call(rbind, lapply(toca_cv, colMeans)), 4)
+apply(abs(toca_cv), 2, which.min)
+apply(abs(toca_cv), 2, which.max)
+toca_cv <- toca_cv[[3]]
+toca_lmc <- toca_lmc[[3]]
+plot(toca_vario$v, toca_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
+
+# prepare variogram plot
+toca_plot <- 
+  plot(toca_vario$v, toca_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, col = "black", 
+       strip = lattice::strip.custom(bg = "lightgray"), xlab = "Distance (m)", ylab = "Semivariance")
+dev.off()
+png("res/fig/toca_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
+toca_plot
+dev.off()
+
+# save results
+save(toca_vario, toca_lmc, file = "data/R/toca_vario.rda")
+
+# make spatial predictions
+t0 <- proc.time()
+toca_pred <- predict(object = toca_lmc, newdata = covar)
+proc.time() - t0
+# toca_pred <- back_transform(pred = toca_pred, soil_data = toca_data, depth = depth, n.sim = 10000)
+save(toca_pred, file = "data/R/toca_pred.rda")
+
+# TOTAL PHOSPHORUS ----
+sv <- "TOPH"
+toph_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
+colnames(toph_data@data) <- gsub("TOPH", "P", colnames(toph_data@data))
+colnames(toph_data@data) <- gsub("10", "1", colnames(toph_data@data))
+colnames(toph_data@data) <- gsub("30", "2", colnames(toph_data@data))
+colnames(toph_data@data) <- gsub("50", "3", colnames(toph_data@data))
+colnames(toph_data@data) <- gsub("70", "4", colnames(toph_data@data))
+colnames(toph_data@data) <- gsub("90", "5", colnames(toph_data@data))
+sv <- "P"
+
+# fit competing cross-variogram models
+toph_vario <- compute_sample_variogram(soil_data = toph_data, sv = sv, cross = TRUE)
+plot(toph_vario$v, scales = list(relation = "same"), pch = 20, cex = 0.5)
+toph_cross <- parallel::mclapply(1:length(range), function (i)
+  gstat::gstat(
+    toph_vario$g, id = paste(sv, ".", depth[1], sep = ""),
+    model = gstat::vgm(psill = 0.8, model = "Exp", range = range[i], nugget = 0.2), fill.all = TRUE))
+toph_lmc <- parallel::mclapply(1:length(toph_cross), function (i)
+  gstat::fit.lmc(v = toph_vario$v, g = toph_cross[[i]], correct.diagonal = 1.01))
+
+# cross-validation
+toph_cv <- parallel::mclapply(
+  toph_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, all.residuals = TRUE,
+  boundaries = attr(toph_vario$v, "boundaries"), correct.diagonal = 1.01)
+toph_cv <- round(do.call(rbind, lapply(toph_cv, colMeans)), 4)
+apply(abs(toph_cv), 2, which.min)
+apply(abs(toph_cv), 2, which.max)
+toph_cv <- toph_cv[[3]]
+toph_lmc <- toph_lmc[[3]]
+plot(toph_vario$v, toph_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
+
+# prepare variogram plot
+toph_plot <- 
+  plot(toph_vario$v, toph_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, col = "black", 
+       strip = lattice::strip.custom(bg = "lightgray"), xlab = "Distance (m)", ylab = "Semivariance")
+dev.off()
+png("res/fig/toph_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
+toph_plot
+dev.off()
+
+# save results
+save(toph_vario, toph_lmc, file = "data/R/toph_vario.rda")
+
+# make spatial predictions
+t0 <- proc.time()
+toph_pred <- predict(object = toph_lmc, newdata = covar)
+proc.time() - t0
+# toph_pred <- back_transform(pred = toph_pred, soil_data = toph_data, depth = depth, n.sim = 10000)
+save(toph_pred, file = "data/R/toph_pred.rda")
+
+# Identification of ADE according to pretic criteria ##########################################################
+
+# built linear model of coregionalization for Ca+Mg, P and C
+pretic_data <- data.frame(
+  stake = toph_data$stake, toph_data@coords, past_landuse = toph_data$past_landuse,
+  EXPH = log(pointData$EXPH[pointData$d == 10]) + 1,
+  CAMG = log(pointData$CAMG[pointData$d == 10] + 1),
+  TOOC = log(pointData$TOOC[pointData$d == 10] + 1))
+pretic_data_new <- apply(pretic_data[, c(5, 6, 7)], 2, function (x) (x - mean(x)) / sd(x))
+pretic_data_new <- cbind(pretic_data[, 1:4], pretic_data_new)
+sv <- c("EXPH", "CAMG", "TOOC")
+
+# cross-variogram
+sp::coordinates(pretic_data_new) <- ~ x + y
+pretic_vario <- gstat::gstat(NULL, id = "EXPH", data = pretic_data_new, form = EXPH ~ past_landuse)
+pretic_vario <- gstat::gstat(pretic_vario, id = "CAMG", data = pretic_data_new, form = CAMG ~ past_landuse)
+pretic_vario <- gstat::gstat(pretic_vario, id = "TOOC", data = pretic_data_new, form = TOOC ~ past_landuse)
+pretic_vario <- list(
+  g = pretic_vario, 
+  v = gstat::variogram(pretic_vario, boundaries = pedometrics::vgmLags(pretic_data_new@coords, n = 5)[-1]))
+plot(pretic_vario$v, scales = list(relation = "same"), pch = 20, cex = 0.5)
+
+# competing ranges
+pretic_cross <- parallel::mclapply(1:length(range), function (i)
+  gstat::gstat(
+    pretic_vario$g, id = sv,
+    model = gstat::vgm(psill = 0.4, model = "Exp", range = range[i], nugget = 0.2), fill.all = TRUE))
+pretic_lmc <- parallel::mclapply(1:length(pretic_cross), function (i)
+  gstat::fit.lmc(v = pretic_vario$v, g = pretic_cross[[i]], correct.diagonal = 1.01))
+
+# cross-validation
+pretic_cv <- parallel::mclapply(
+  pretic_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, 
+  all.residuals = TRUE, boundaries = attr(pretic_vario$v, "boundaries"), correct.diagonal = 1.01)
+pretic_cv <- round(do.call(rbind, lapply(pretic_cv, colMeans)), 4)
+apply(abs(pretic_cv), 2, which.min)
+apply(abs(pretic_cv), 2, which.max)
+pretic_cv <- pretic_cv[[3]]
+pretic_lmc <- pretic_lmc[[1]]
+plot(pretic_vario$v, pretic_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, ylim = c(0, 1.2))
+
+
+
+d <- 10
+pretic_data <- data.frame(
+  stake = toph_data$stake, toph_data@coords, past_landuse = toph_data$past_landuse,
+  EXPH = pointData$EXPH[pointData$d == d],
+  CAMG = pointData$CAMG[pointData$d == d],
+  TOOC = pointData$TOOC[pointData$d == d])
+
+id <- sapply(1:nrow(pretic_data), function (i)
+  pretic_data[i, 5] >= 30 && pretic_data[i, 6] >= 2 && pretic_data[i, 7] >= 10
+  )
+  
+pretic_data_new$pretic <- id
+
+tmp <- gstat::variogram(pretic ~ past_landuse, pretic_data_new, width = 50)
+plot(tmp)
+v.fit <- gstat::fit.variogram(tmp, gstat::vgm(0.1, "Exp", 50, 0.05))
+plot(tmp, v.fit)
+sp::proj4string(pretic_data_new) <- sp::proj4string(covar)
+tmp <- gstat::krige(pretic ~ past_landuse, pretic_data_new, model = v.fit, newdata = covar)
+tmp$var1.pred <- ifelse(tmp$var1.pred > 0.5, "TRUE", "FALSE")
+tmp$var1.pred <-  as.factor(tmp$var1.pred)
+
+dev.off()
+png("res/fig/continuous_pretic.png")
+sp::spplot(tmp, 1)
+
+# plot(pretic_data[, 2:3])
+points(tmp[, 2:3], col = "red", pch = 20)
+text(tmp[, 2:3], labels = tmp$stake, pos = 4)

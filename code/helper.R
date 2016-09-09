@@ -140,29 +140,45 @@ get_lm_output <-
 
 # Compute empirical variogram ----
 compute_sample_variogram <- 
-  function (soil_data, sv = "TOOC", depth = seq(10, 90, 20)) {
+  function (soil_data, sv = "TOOC", depth = seq(10, 90, 20), cross = FALSE) {
     
     # Define model formula
     # We model every soil property as a linear function of the covariate
-    form <- lapply(1:length(depth), function (i) paste(sv, ".", depth[i], " ~ past_landuse", sep = ""))
-    form <- lapply(form, as.formula)
+    id <- colnames(soil_data@data)[2:6]
     
-    # Create gstat object
-    for (i in 1:length(depth)) {
-      if (i == 1) {
-        g <- gstat::gstat(NULL, id = paste(sv, ".", depth[i], sep = ""), data = soil_data, form = form[[i]])
-      } else {
-        g <- gstat::gstat(g, id = paste(sv, ".", depth[i], sep = ""), data = soil_data, form = form[[i]])
-      }
-    }
+    # form <- lapply(1:length(depth), function (i) paste(sv, ".", depth[i], " ~ past_landuse", sep = ""))
+    form <- lapply(1:length(depth), function (i) paste(id[i], " ~ past_landuse", sep = ""))
+    form <- lapply(form, as.formula)
     
     # Compute lag-distance classes
     lags <- pedometrics::vgmLags(soil_data@coords, n = 5)[-1]
     
-    # Compute empirical direct and cross-variograms
-    v <- gstat::variogram(g, boundaries = lags)
-    
-    return (list(g = g, v = v))
+    if (cross) {
+      # Create gstat object
+      for (i in 1:length(depth)) {
+        if (i == 1) {
+          # g <- 
+          # gstat::gstat(NULL, id = paste(sv, ".", depth[i], sep = ""), data = soil_data, form = form[[i]])
+          g <- gstat::gstat(NULL, id = id[i], data = soil_data, form = form[[i]])
+        } else {
+          # g <- gstat::gstat(g, id = paste(sv, ".", depth[i], sep = ""), data = soil_data, form = form[[i]])
+          g <- gstat::gstat(g, id = id[i], data = soil_data, form = form[[i]])
+        }
+      }
+      
+      # Compute empirical direct and cross-variograms
+      v <- gstat::variogram(g, boundaries = lags)
+      
+      return (list(g = g, v = v))
+      
+    } else {
+      # Compute empirical direct and cross-variograms
+      v <- list()
+      for (i in 1:length(depth)) {
+        v[[i]] <- gstat::variogram(form[[i]], boundaries = lags, dat = soil_data)
+      }
+      return (v)
+    }
   }
 
 # Back-transform predictions ----
