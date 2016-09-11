@@ -35,6 +35,11 @@ pointData$TOCA <- round(pointData$TOCA, 1)
 # Create variable CAMG = EXCA + EXMG
 pointData$CAMG <- pointData$EXCA + pointData$EXMG
 
+# Create variable PRETIC according to WRB specifications
+pointData$PRETIC <-
+  apply(pointData, 1, function (x) 
+    ifelse(x["EXPH"] >= 30 && x["CAMG"] >= 2 && x["TOOC"] >= 10, 1, 0))
+
 # Save point soil data
 save(pointData, file = "data/R/pointData.rda")
 
@@ -152,6 +157,35 @@ tooc_pred <- predict(object = tooc_lmc, newdata = covar)
 proc.time() - t0
 # tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data, depth = depth, n.sim = 10000)
 save(tooc_pred, file = "data/R/tooc_pred.rda")
+
+# make spatial simulations
+nsim <- 1
+pts <- 50000
+simgrid <- make_simgrid(grid = covar, n = pts)
+simgrid <- simgrid[sample(1:length(simgrid), size = length(simgrid)), ]
+n <- round(seq(1, length(simgrid), length.out = pts / 250))
+pts <- cbind(n[-length(n)], n[-1] + 1)
+pts[nrow(pts), ncol(pts)] <- length(simgrid)
+simgrid <- lapply(1:nrow(pts), function (i) simgrid[pts[i, 1]:pts[i, 2], ])
+str(simgrid, 1)
+t0 <- proc.time()
+set.seed(1984)
+tooc_sim <- parallel::mclapply(simgrid, function (x)
+  predict(object = tooc_lmc, newdata = x, nsim = nsim, debug.level = -1, 
+          nmax = 12, maxdist = tooc_lmc$model$C.1$range[2]))
+# tooc_sim <- predict(object = tooc_lmc, newdata = simgrid, nsim = nsim, debug.level = -1, nmax = 4)
+(proc.time() - t0) / 3600
+
+tooc_sim <- do.call(rbind, tooc_sim)
+simgrid <- do.call(rbind, simgrid)
+str(tooc_sim)
+str(simgrid)
+
+sp::gridded(tooc_sim) <- TRUE
+sp::gridded(simgrid) <- TRUE
+
+sp::spplot(tooc_sim, col.regions = soil.colors(100))
+sp::spplot(simgrid, col.regions = soil.colors(100))
 
 # TOTAL CALCIUM ----
 sv <- "TOCA"
@@ -306,7 +340,7 @@ pretic_data <- data.frame(
   TOOC = pointData$TOOC[pointData$d == d])
 
 id <- sapply(1:nrow(pretic_data), function (i)
-  pretic_data[i, 5] >= 30 && pretic_data[i, 6] >= 2 && pretic_data[i, 7] >= 10
+  pretic_data[i, "EXPH"] >= 30 && pretic_data[i, "CAMG"] >= 2 && pretic_data[i, "TOOC"] >= 10
   )
   
 pretic_data_new$pretic <- id
