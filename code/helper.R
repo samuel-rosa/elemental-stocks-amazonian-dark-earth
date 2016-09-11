@@ -110,8 +110,8 @@ get_lm_output <-
       # Fit linear models, run an analsis of variance, and extract the sum of squares of the fit,
       # the coefficient of determination, fitted coefficients and their standard error
       fit <- lm(form, data = soil_var@data)
-      lm_rss[[i]] <- c(anova(fit)$`Sum Sq`[1], summary(fit)$r.squared)
-      names(lm_rss[[i]]) <- c("SS", "R2")
+      lm_rss[[i]] <- c(anova(fit)$`Sum Sq`[1], summary(fit)$r.squared, anova(fit)$`Pr(>F)`[1])
+      names(lm_rss[[i]]) <- c("SS", "R2", "P")
       lm_coef[[i]] <- summary(fit)$coefficients[, 1]
       names(lm_coef[[i]]) <- c("Intercept", "exp(past)")
       lm_error[[i]] <- summary(fit)$coefficients[, 2]
@@ -232,3 +232,5 @@ back_transform <-
     return (pred)
   }
 
+# Add grid lines to lattice graphics aligned with the axis labels ----
+addGridLines <- latticeExtra::layer(lattice::panel.grid(h = -1, v = -1))

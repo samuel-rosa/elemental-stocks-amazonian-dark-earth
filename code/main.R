@@ -140,9 +140,12 @@ tooc_lmc <- tooc_lmc[[1]]
 plot(tooc_vario$v, tooc_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
 
 # prepare variogram plot
-tooc_plot <- 
-  plot(tooc_vario$v, tooc_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, col = "black", 
-       strip = lattice::strip.custom(bg = "lightgray"), xlab = "Distance (m)", ylab = "Semivariance")
+tooc_plot <-
+  plot(tooc_vario$v, tooc_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, 
+       col = "black", strip = lattice::strip.custom(bg = "lightgray"),  xlab = "Distance (m)", 
+       ylab = "Semivariance (-)")
+tmp <- tooc_plot + addGridLines
+tooc_plot <- tmp + latticeExtra::as.layer(tooc_plot)
 dev.off()
 png("res/fig/tooc_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 tooc_plot
