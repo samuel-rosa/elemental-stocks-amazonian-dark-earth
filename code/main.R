@@ -35,10 +35,13 @@ pointData$TOCA <- round(pointData$TOCA, 1)
 # Create variable CAMG = EXCA + EXMG
 pointData$CAMG <- pointData$EXCA + pointData$EXMG
 
-# Create variable PRETIC according to WRB specifications
+# Create variable PRETIC according to WRB specifications.
+# Prepare auxiliary plotting variables
 pointData$PRETIC <-
-  apply(pointData, 1, function (x) 
-    ifelse(x["EXPH"] >= 30 && x["CAMG"] >= 2 && x["TOOC"] >= 10, 1, 0))
+  sapply(1:nrow(pointData), function (i) 
+    ifelse(pointData[i, "EXPH"] >= 30 && pointData[i, "CAMG"] >= 2 && pointData[i, "TOOC"] >= 10, 1, 0))
+pointData$pch <- ifelse(pointData$PRETIC == 1, 21, 1)
+pointData$col <- ifelse(pointData$PRETIC == 1, "red", "ivory")
 
 # Save point soil data
 save(pointData, file = "data/R/pointData.rda")
@@ -135,7 +138,7 @@ tooc_cv <- parallel::mclapply(
 tooc_cv <- round(do.call(rbind, lapply(tooc_cv, colMeans)), 4)
 apply(abs(tooc_cv), 2, which.min)
 apply(abs(tooc_cv), 2, which.max)
-tooc_cv <- tooc_cv[[1]]
+tooc_cv <- tooc_cv[1, ]
 tooc_lmc <- tooc_lmc[[1]]
 plot(tooc_vario$v, tooc_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
 
@@ -158,37 +161,30 @@ save(tooc_vario, tooc_lmc, file = "data/R/tooc_vario.rda")
 t0 <- proc.time()
 tooc_pred <- predict(object = tooc_lmc, newdata = covar)
 proc.time() - t0
-# tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data, depth = depth, n.sim = 10000)
+tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data)
 save(tooc_pred, file = "data/R/tooc_pred.rda")
 
-# make spatial simulations
-nsim <- 1
-pts <- 50000
-simgrid <- make_simgrid(grid = covar, n = pts)
-simgrid <- simgrid[sample(1:length(simgrid), size = length(simgrid)), ]
-n <- round(seq(1, length(simgrid), length.out = pts / 250))
-pts <- cbind(n[-length(n)], n[-1] + 1)
-pts[nrow(pts), ncol(pts)] <- length(simgrid)
-simgrid <- lapply(1:nrow(pts), function (i) simgrid[pts[i, 1]:pts[i, 2], ])
-str(simgrid, 1)
-t0 <- proc.time()
-set.seed(1984)
-tooc_sim <- parallel::mclapply(simgrid, function (x)
-  predict(object = tooc_lmc, newdata = x, nsim = nsim, debug.level = -1, 
-          nmax = 12, maxdist = tooc_lmc$model$C.1$range[2]))
-# tooc_sim <- predict(object = tooc_lmc, newdata = simgrid, nsim = nsim, debug.level = -1, nmax = 4)
-(proc.time() - t0) / 3600
 
-tooc_sim <- do.call(rbind, tooc_sim)
-simgrid <- do.call(rbind, simgrid)
-str(tooc_sim)
-str(simgrid)
 
-sp::gridded(tooc_sim) <- TRUE
-sp::gridded(simgrid) <- TRUE
 
-sp::spplot(tooc_sim, col.regions = soil.colors(100))
-sp::spplot(simgrid, col.regions = soil.colors(100))
+
+
+# save figure with predictions
+map <- sp::spplot(
+  tooc_pred, seq(1, 9, 2), layout = c(5, 1), col.regions = soil.colors,
+  panel = function (...) {
+    lattice::panel.grid(h = -1, v = -1)
+    lattice::panel.levelplot(...)
+    d <- depth[lattice::panel.number()]
+    lattice::panel.points(
+      pointData@coords[pointData$d == d, ], cex = 0.5, fill = pointData$col[pointData$d == d], 
+      col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
+  })
+# map$condlevels$name <- gsub("TOOC", "C", map$condlevels$name)
+dev.off()
+png(filename = "res/fig/tooc_pred.png", height = 480 * 0.70, width = 480*2, res = 72*1.5)
+map
+dev.off()
 
 # TOTAL CALCIUM ----
 sv <- "TOCA"
@@ -218,7 +214,7 @@ toca_cv <- parallel::mclapply(
 toca_cv <- round(do.call(rbind, lapply(toca_cv, colMeans)), 4)
 apply(abs(toca_cv), 2, which.min)
 apply(abs(toca_cv), 2, which.max)
-toca_cv <- toca_cv[[3]]
+toca_cv <- toca_cv[3, ]
 toca_lmc <- toca_lmc[[3]]
 plot(toca_vario$v, toca_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
 
@@ -226,6 +222,8 @@ plot(toca_vario$v, toca_lmc, scales = list(relation = "same"), pch = 20, cex = 0
 toca_plot <- 
   plot(toca_vario$v, toca_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, col = "black", 
        strip = lattice::strip.custom(bg = "lightgray"), xlab = "Distance (m)", ylab = "Semivariance")
+tmp <- toca_plot + addGridLines
+toca_plot <- tmp + latticeExtra::as.layer(toca_plot)
 dev.off()
 png("res/fig/toca_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 toca_plot
@@ -238,7 +236,7 @@ save(toca_vario, toca_lmc, file = "data/R/toca_vario.rda")
 t0 <- proc.time()
 toca_pred <- predict(object = toca_lmc, newdata = covar)
 proc.time() - t0
-# toca_pred <- back_transform(pred = toca_pred, soil_data = toca_data, depth = depth, n.sim = 10000)
+toca_pred <- back_transform(pred = toca_pred, soil_data = toca_data)
 save(toca_pred, file = "data/R/toca_pred.rda")
 
 # TOTAL PHOSPHORUS ----
@@ -269,7 +267,7 @@ toph_cv <- parallel::mclapply(
 toph_cv <- round(do.call(rbind, lapply(toph_cv, colMeans)), 4)
 apply(abs(toph_cv), 2, which.min)
 apply(abs(toph_cv), 2, which.max)
-toph_cv <- toph_cv[[3]]
+toph_cv <- toph_cv[3, ]
 toph_lmc <- toph_lmc[[3]]
 plot(toph_vario$v, toph_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
 
@@ -277,6 +275,8 @@ plot(toph_vario$v, toph_lmc, scales = list(relation = "same"), pch = 20, cex = 0
 toph_plot <- 
   plot(toph_vario$v, toph_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, col = "black", 
        strip = lattice::strip.custom(bg = "lightgray"), xlab = "Distance (m)", ylab = "Semivariance")
+tmp <- toph_plot + addGridLines
+toph_plot <- tmp + latticeExtra::as.layer(toph_plot)
 dev.off()
 png("res/fig/toph_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 toph_plot
@@ -289,7 +289,7 @@ save(toph_vario, toph_lmc, file = "data/R/toph_vario.rda")
 t0 <- proc.time()
 toph_pred <- predict(object = toph_lmc, newdata = covar)
 proc.time() - t0
-# toph_pred <- back_transform(pred = toph_pred, soil_data = toph_data, depth = depth, n.sim = 10000)
+toph_pred <- back_transform(pred = toph_pred, soil_data = toph_data, depth = depth, n.sim = 10000)
 save(toph_pred, file = "data/R/toph_pred.rda")
 
 # Identification of ADE according to pretic criteria ##########################################################

@@ -34,7 +34,11 @@ depth_bwplot <-
       par.settings = list(
         fontsize = list(text = 14, points = 8), box.rectangle = list(col = "black"),
         box.umbrella = list(col = "black"), plot.symbol = list(col = "black", cex = 0.7),
-        box.dot = list(cex = 0.7)), ...)
+        box.dot = list(cex = 0.7)), ...,
+      panel = function (...) {
+        lattice::panel.grid(v = -1, h = -1)
+        lattice::panel.bwplot(...)
+      })
     
     # Reverse the y axis
     a$y.limits <- rev(c("0-20", "20-40", "40-60", "60-80", "80-100"))
@@ -89,6 +93,8 @@ prepare_soil_data <-
     # Save data for back-tranformation
     if (save4back) {
       a <- attributes(soil_var)
+      names(lambda) <- names(sv_mean)
+      a$lambda <- lambda
       a$sv_mean <- sv_mean
       a$sv_sd <- sv_sd
       attributes(soil_var) <- a
@@ -183,7 +189,7 @@ compute_sample_variogram <-
 
 # Back-transform predictions ----
 back_transform <- 
-  function (pred, soil_data, depth = seq(10, 90, 20), n.sim = 10000) {
+  function (pred, soil_data, depth = seq(10, 90, 20), n.sim = 2, mc.cores = 4) {
     
     # Identify the columns of 'predgrid' containing the predictions and prediction error variances
     id_mean <- seq(1, 9, 2)
@@ -198,7 +204,7 @@ back_transform <-
     pred@data[, id_sd] <- 
       lapply(1:length(depth), function (i) 
         sqrt(pred@data[, id_sd[i]]) * attr(soil_data, "sv_sd")[i])
-
+    
     for (i in 1:length(depth)) {
 
       # Check which cells are not NA
@@ -214,8 +220,8 @@ back_transform <-
 
         # Simulate n values at the j-th prediction locations
         sim <- geoR::rboxcox(
-        n = n.sim, lambda = attr(soil_data, "lambda")[i],
-        mean = pred@data[j, id_mean[i]], sd = pred@data[j, id_sd[i]])
+          n = n.sim, lambda = attr(soil_data, "lambda")[i],
+          mean = pred@data[j, id_mean[i]], sd = pred@data[j, id_sd[i]])
 
         # Replace the predicted value with the mean of the n simulated values
         pred@data[j, id_mean[i]] <- mean(sim) - 1
