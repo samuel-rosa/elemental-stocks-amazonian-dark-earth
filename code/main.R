@@ -75,6 +75,54 @@ p
 dev.off()
 rm(p)
 
+# Soil density data ###########################################################################################
+# Soil density data is available at two sampling locations, more specificaly at two soil profile descriptions.
+# The approach we employ consists of fitting a splines function to each profile separately and predicting the
+# soil bulk density at the five standard depths (10, 30, 50, 70, and 90 cm) at the respective soil profiles. 
+# We then use the predictions at the two soil profiles to compute the mean and standard deviation of the soil
+# density. The mean and standard deviation of the soil density is used to compute the soil mass per square 
+# metre in each sampling layer (20 cm depth).
+# Bulk density data is in grams per cubic centimetre. Soil mass data is in megagrams.
+
+density <- read.table("data/soil/density.csv", sep = ";", header = TRUE)
+
+# fit <- list()
+# pred <- list()
+# for (i in 1:length(unique(density$profile))) {
+#   fit[[i]] <- lm(BUDE ~ splines::ns(d, df = 2), data = density[which(density$profile == i), ])
+#   pred[[i]] <- predict(fit[[i]], data.frame(d = seq(0, 100, 10)))
+# }
+# pred <- as.data.frame(pred)
+# colnames(pred) <- c("prof1", "prof2")
+# rownames(pred) <- seq(10, 90, 20)
+# density_stats <- data.frame(mean = round(apply(pred, 1, mean), 2), sd = round(apply(pred, 1, sd), 2))
+# density_stats$d <- seq(0, 100, 10)
+# density_stats$low <- density_stats$mean - density_stats$sd * 1.64
+# density_stats$high <- density_stats$mean + density_stats$sd * 1.64
+
+lattice::xyplot(BUDE ~ d, density, panel = function (...) {
+  lattice::panel.xyplot(...)
+  latticeExtra::panel.smoother(BUDE ~ splines::ns(d, df = 2), method = "lm")
+})
+
+require(latticeExtra)
+require(splines)
+
+tmp <- data.frame(x = density$d, y = density$BUDE)
+p <- lattice::xyplot(y ~ x, tmp, draw.in = "VP", scales = list(x = list(rot = 90), y = list(rot = 90))) +
+  latticeExtra::layer(latticeExtra::panel.smoother(y ~ splines::ns(x, df = 2), method = "lm"))
+grid::pushViewport(grid::viewport(w = 2/3, angle = -90))
+print(p, newpage = FALSE)
+dev.off()
+
+
+
+# soil_mass <- (100 * 100 * 20 * density_stats) / 1000 # kilograms
+soil_mass <- 0.2 * density_stats # megagrams
+# soil_mass$frac <- soil_mass[, "sd"] / soil_mass[, "mean"]
+
+rm(fit, pred)
+
 # Deterministic component of spatial variation ################################################################
 # We model the soil spatial variation using depth-wise linear models where the independed variable is the
 # exponential environmental gradient.
