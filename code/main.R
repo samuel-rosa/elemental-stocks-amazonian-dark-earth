@@ -83,45 +83,60 @@ rm(p)
 # density. The mean and standard deviation of the soil density is used to compute the soil mass per square 
 # metre in each sampling layer (20 cm depth).
 # Bulk density data is in grams per cubic centimetre. Soil mass data is in megagrams.
+# We ignore the data from Afranio (2008) because it covers only the top soil layer (0-5 cm).
+density <- read.table("data/soil/density.csv", sep = ";", header = TRUE, dec = ",")
+density$BUDE <- round(density$BUDE, 2)
+density <- density[density$source != "Afranio 2008", ]
+head(density)
 
-density <- read.table("data/soil/density.csv", sep = ";", header = TRUE)
+# fit linear model to bulk density data using depth as explanatory variable
+plot(BUDE ~ depth, density)
+fit_bude <- lm(BUDE ~ splines::ns(depth, df = 5), density)
+newdata <- data.frame(depth = seq(0, max(density$depth), 1))
+pred_bude <- predict(fit_bude, newdata = newdata, se.fit = TRUE, interval = "prediction", level = 0.90)
+pred_bude2 <- predict(fit_bude, newdata = newdata, se.fit = TRUE, interval = "confidence", level = 0.90)
 
-# fit <- list()
-# pred <- list()
-# for (i in 1:length(unique(density$profile))) {
-#   fit[[i]] <- lm(BUDE ~ splines::ns(d, df = 2), data = density[which(density$profile == i), ])
-#   pred[[i]] <- predict(fit[[i]], data.frame(d = seq(0, 100, 10)))
-# }
-# pred <- as.data.frame(pred)
-# colnames(pred) <- c("prof1", "prof2")
-# rownames(pred) <- seq(10, 90, 20)
-# density_stats <- data.frame(mean = round(apply(pred, 1, mean), 2), sd = round(apply(pred, 1, sd), 2))
-# density_stats$d <- seq(0, 100, 10)
-# density_stats$low <- density_stats$mean - density_stats$sd * 1.64
-# density_stats$high <- density_stats$mean + density_stats$sd * 1.64
-
-lattice::xyplot(BUDE ~ d, density, panel = function (...) {
-  lattice::panel.xyplot(...)
-  latticeExtra::panel.smoother(BUDE ~ splines::ns(d, df = 2), method = "lm")
-})
-
-require(latticeExtra)
-require(splines)
-
-tmp <- data.frame(x = density$d, y = density$BUDE)
-p <- lattice::xyplot(y ~ x, tmp, draw.in = "VP", scales = list(x = list(rot = 90), y = list(rot = 90))) +
-  latticeExtra::layer(latticeExtra::panel.smoother(y ~ splines::ns(x, df = 2), method = "lm"))
-grid::pushViewport(grid::viewport(w = 2/3, angle = -90))
-print(p, newpage = FALSE)
+# prepare figure with BUDE predictions and standard errors
+p <- 
+  lattice::xyplot(
+  newdata$d ~ pred_bude$fit[, 1], type = "l", col = "black",
+  xlab = expression(paste('Bulk density (Mg ',m^-3,')', sep = '')), ylab = "Depth (cm)",
+  ylim = rev(extendrange(density$depth)),
+  xlim = extendrange(density$BUDE),
+  key = list(corner = c(1, 0.1),
+             points = list(pch = c(20, unique(density$profile))), 
+             text = list(c("Prediction", paste("Profile ", unique(density$profile))))),
+  panel = function (...) {
+    lattice::panel.grid(v = -1, h = -1)
+    lattice::panel.polygon(
+      y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude$fit[, 2], rev(pred_bude$fit[, 3])), 
+      col = "gray75", border = "gray75")
+    lattice::panel.polygon(
+      y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude2$fit[, 2], rev(pred_bude2$fit[, 3])), 
+      col = "gray65", border = "gray65")
+    lattice::panel.points(density$depth ~ density$BUDE, pch = density$profile, col = "gray25", cex = 0.75)
+    lattice::panel.xyplot(...)
+    lattice::panel.points(
+      newdata$depth[newdata$depth %in% seq(10, 90, 20)] ~ pred_bude$fit[newdata$depth %in% seq(10, 90, 20), 1],
+      pch = 20, col = "black", cex = 1.25)
+    lattice::panel.text(
+      x = 1.075, y = 25, pos = 4,
+      labels = paste('Adjusted R2 = ', round(summary(fit_bude)$adj.r.squared, 2), sep = ''))
+  }
+  )
 dev.off()
+png("res/fig/bude.png", width = 480 * 2, height = 480 * 2, res = 150)
+p
+dev.off()
+rm(newdata, pred_bude2, pred_bude, p, density)
 
-
-
+# predict bude at standard depths and calculate the prediction error variance
+bude <- predict(fit_bude, newdata = data.frame(depth = seq(10, 90, 20)), se.fit = TRUE)
+bude <-  
+  data.frame(mean = bude$fit, sd = sqrt(1 + c(bude$se.fit / bude$residual.scale) ^ 2) * bude$residual.scale)
 # soil_mass <- (100 * 100 * 20 * density_stats) / 1000 # kilograms
-soil_mass <- 0.2 * density_stats # megagrams
+# soil_mass <- 0.2 * density_stats # megagrams
 # soil_mass$frac <- soil_mass[, "sd"] / soil_mass[, "mean"]
-
-rm(fit, pred)
 
 # Deterministic component of spatial variation ################################################################
 # We model the soil spatial variation using depth-wise linear models where the independed variable is the
