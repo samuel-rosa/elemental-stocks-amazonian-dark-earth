@@ -189,7 +189,7 @@ compute_sample_variogram <-
 
 # Back-transform predictions ----
 back_transform <- 
-  function (pred, soil_data, depth = seq(10, 90, 20), n.sim = 2, mc.cores = 4) {
+  function (pred, soil_data, depth = seq(10, 90, 20), n.sim = 10000) {
     
     # Identify the columns of 'predgrid' containing the predictions and prediction error variances
     id_mean <- seq(1, 9, 2)
