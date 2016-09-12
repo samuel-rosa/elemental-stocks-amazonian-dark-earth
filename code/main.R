@@ -227,11 +227,6 @@ proc.time() - t0
 tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data)
 save(tooc_pred, file = "data/R/tooc_pred.rda")
 
-
-
-
-
-
 # save figure with predictions
 map <- sp::spplot(
   tooc_pred, seq(1, 9, 2), layout = c(5, 1), col.regions = soil.colors,
