@@ -1,4 +1,4 @@
-# title: Three-dimensional geostatistical modelling of elemental stocks in Amazonian Dark Earths
+# title: Spatial modelling of total carbon, calcium and phosphorus stocks in Amazonian Dark Earths
 # author: Alessandro Samuel-Rosa
 
 # Initial settings ############################################################################################
@@ -38,8 +38,9 @@ pointData$CAMG <- pointData$EXCA + pointData$EXMG
 # Create variable PRETIC according to WRB specifications.
 # Prepare auxiliary plotting variables
 pointData$PRETIC <-
-  sapply(1:nrow(pointData), function (i) 
-    ifelse(pointData[i, "EXPH"] >= 30 && pointData[i, "CAMG"] >= 2 && pointData[i, "TOOC"] >= 10, 1, 0))
+  sapply(1:nrow(pointData), function (i) {
+    ifelse(pointData[i, "EXPH"] >= 30 && pointData[i, "CAMG"] >= 2 && pointData[i, "TOOC"] >= 10, 1, 0)
+  })
 pointData$pch <- ifelse(pointData$PRETIC == 1, 21, 1)
 pointData$col <- ifelse(pointData$PRETIC == 1, "red", "ivory")
 
@@ -49,7 +50,7 @@ save(pointData, file = "data/R/pointData.rda")
 # Check spatial distribution
 sp::coordinates(pointData) <- ~ x + y
 sp::proj4string(pointData) <- sp::CRS("+init=epsg:32720")
-sp::plot(pointData, pch = 20, cex = 0.3)
+plot(pointData@coords, pch = 20, cex = 0.3)
 
 # Check depth-wise empirical distribution
 # The bw plots show that the concentration of both `C` and `Ca` decreases with depth, as well as its 
@@ -75,7 +76,7 @@ p
 dev.off()
 rm(p)
 
-# Soil density data ###########################################################################################
+# Soil bulk density ###########################################################################################
 # Soil density data is available at two sampling locations, more specificaly at two soil profile descriptions.
 # The approach we employ consists of fitting a splines function to each profile separately and predicting the
 # soil bulk density at the five standard depths (10, 30, 50, 70, and 90 cm) at the respective soil profiles. 
@@ -105,27 +106,28 @@ p <-
   xlim = extendrange(density$BUDE),
   key = list(corner = c(1, 0.1),
              points = list(pch = c(20, unique(density$profile))), 
-             text = list(c("Prediction", paste("Profile ", unique(density$profile))))),
+             text = list(c("Pred", paste("P", unique(density$profile)))), cex = 0.5),
   panel = function (...) {
     lattice::panel.grid(v = -1, h = -1)
     lattice::panel.polygon(
       y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude$fit[, 2], rev(pred_bude$fit[, 3])), 
-      col = "gray75", border = "gray75")
+      col = "gray90", border = "gray90")
     lattice::panel.polygon(
       y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude2$fit[, 2], rev(pred_bude2$fit[, 3])), 
-      col = "gray65", border = "gray65")
-    lattice::panel.points(density$depth ~ density$BUDE, pch = density$profile, col = "gray25", cex = 0.75)
+      col = "gray85", border = "gray85")
+    lattice::panel.points(density$depth ~ density$BUDE, pch = density$profile, col = "gray25", cex = 0.5)
     lattice::panel.xyplot(...)
     lattice::panel.points(
       newdata$depth[newdata$depth %in% seq(10, 90, 20)] ~ pred_bude$fit[newdata$depth %in% seq(10, 90, 20), 1],
-      pch = 20, col = "black", cex = 1.25)
-    lattice::panel.text(
-      x = 1.075, y = 25, pos = 4,
-      labels = paste('Adjusted R2 = ', round(summary(fit_bude)$adj.r.squared, 2), sep = ''))
+      pch = 20, col = "black")
+    # lattice::panel.text(
+      # x = 1.075, y = 25, pos = 4,
+      # labels = paste('Adjusted R2 = ', round(summary(fit_bude)$adj.r.squared, 2), sep = ''))
   }
   )
+p$par.settings <- list(fontsize = list(text = 12))
 dev.off()
-png("res/fig/bude.png", width = 480 * 2, height = 480 * 2, res = 150)
+png("res/fig/bude.png", width = 480 * 2, height = 480 * 2, res = 300)
 p
 dev.off()
 rm(newdata, pred_bude2, pred_bude, p, density)
@@ -138,6 +140,67 @@ bude <-
 # soil_mass <- 0.2 * density_stats # megagrams
 # soil_mass$frac <- soil_mass[, "sd"] / soil_mass[, "mean"]
 
+# Volume of coarse fragments ##################################################################################
+p <- 
+  lattice::histogram(
+    pointData$FRAG, xlab = "Volume of ceramics (%)",
+    panel = function (...) {
+      lattice::panel.grid(h = -1, v = -1)
+      lattice::panel.rug(..., col = "gray50")
+      lattice::panel.histogram(..., col = "gray85")
+    })
+p$par.settings <- list(fontsize = list(text = 12))
+dev.off()
+png("res/fig/ceramics.png", width = 480 * 2, height = 480 * 2, res = 300)
+p
+dev.off()
+rm(p)
+
+# Study area ##################################################################################################
+# Prepare a figure of the study area using Google Earth imagery. The figure must show the study area and 
+# the Solimões River so that the reader can have an idea of the past landscape setting, with the river bed 
+# running very close to the study area.
+
+# Get image from Google Maps
+location <- c(-60.24, -3.26, -60.22, -3.253)
+map <- ggmap::get_map(location, maptype = "satellite")
+
+# Prepare point data
+# id <- seq(1, nrow(pointData), 5)
+# pts <- data.frame(pointData@coords[id, ])
+# sp::coordinates(pts) <- ~ x + y
+# sp::proj4string(pts) <- sp::proj4string(pointData)
+# pts <- sp::spTransform(pts, sp::CRS("+init=epsg:4326"))
+# pts <- sp::coordinates(pts)
+
+# Prepare polygon data
+boundary <- raster::shapefile("data/QGIS/boundary.shp")
+boundary@data <- data.frame(id = 1)
+boundary <- sp::spTransform(boundary, sp::CRS("+init=epsg:4326"))
+boundary@data$id <- rownames(boundary@data)
+lab <- boundary@bbox
+lab <- lab[, 1] + apply(lab, 1, diff) * 0.5
+boundary <- ggplot2::fortify(boundary, region = "id")
+
+# Prepare image
+p <- 
+  ggmap::ggmap(map) + 
+  ggplot2::xlab("Longitude") +
+  ggplot2::ylab("Latitude") +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
+                 axis.text.y = ggplot2::element_text(color = "black")) +
+  ggplot2::geom_polygon(
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
+  ggplot2::geom_text(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261), size = 3) +
+  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005), size = 3)
+
+# Save image
+dev.off()
+png("res/fig/caldeirao.png", width = 480 * 2, height = 480 * 2, res = 300)
+p
+dev.off()
+rm(p, lab, boundary, pts, location, id, map)
+
 # Deterministic component of spatial variation ################################################################
 # We model the soil spatial variation using depth-wise linear models where the independed variable is the
 # exponential environmental gradient.
@@ -148,7 +211,30 @@ covar <- spgrass7::readRAST("past_landuse")
 covar$past_landuse <- (covar$past_landuse - min(covar$past_landuse, na.rm = TRUE)) / 
   (max(covar$past_landuse, na.rm = TRUE) - min(covar$past_landuse, na.rm = TRUE))
 covar$past_landuse <- exp(covar$past_landuse)
-sp::spplot(covar, col.regions = soil.colors)
+
+# Save image of covariate
+map <- covar
+sp::gridded(map) <- FALSE
+map@coords <- map@coords / 1000
+map@bbox <- map@bbox / 1000
+sp::gridded(map) <- TRUE
+pts <- pointData@coords[seq(1, nrow(pointData), 5), ] / 1000
+
+p <- sp::spplot(
+  map, col.regions = soil.colors, colorkey = FALSE, scales = list(draw = TRUE),
+  xlab = "Easting (m)", ylab = "Northing (m)",
+  panel = function (...) {
+    lattice::panel.grid(h = -1, v = -1)
+    lattice::panel.levelplot(...)
+    lattice::panel.points(
+      pts, pch = 21, fill = "darkolivegreen3", 
+      col.symbol = "dimgrey", cex = 0.5)
+  })
+dev.off()
+png("res/fig/covar.png", width = 480 * 2, height = 480 * 2, res = 300)
+p
+dev.off()
+rm(p, map, pts)
 
 # Total organic carbon
 soil_var <- prepare_soil_data(pointData = pointData, sv = "TOOC", covar = covar)
