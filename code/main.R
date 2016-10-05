@@ -164,7 +164,7 @@ rm(p)
 # Get image from Google Maps
 location <- c(-60.24, -3.26, -60.22, -3.253)
 map <- ggmap::get_map(location, maptype = "satellite")
-
+ggmap::ggmap(map)
 # Prepare point data
 # id <- seq(1, nrow(pointData), 5)
 # pts <- data.frame(pointData@coords[id, ])
@@ -224,7 +224,7 @@ pts <- pointData@coords[seq(1, nrow(pointData), 5), ]
 pts[, 1] <- pts[, 1] - min[1]
 pts[, 2] <- pts[, 2] - min[2]
 p <- sp::spplot(
-  map, col.regions = soil.colors, colorkey = FALSE, scales = list(draw = TRUE),
+  map, col.regions = soil.colors, colorkey = TRUE, scales = list(draw = TRUE),
   xlab = "Easting (m)", ylab = "Northing (m)",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
