@@ -199,7 +199,7 @@ dev.off()
 png("res/fig/caldeirao.png", width = 480 * 2, height = 480 * 2, res = 300)
 p
 dev.off()
-rm(p, lab, boundary, pts, location, id, map)
+rm(p, lab, boundary, location, map)
 
 # Deterministic component of spatial variation ################################################################
 # We model the soil spatial variation using depth-wise linear models where the independed variable is the
@@ -215,11 +215,14 @@ covar$past_landuse <- exp(covar$past_landuse)
 # Save image of covariate
 map <- covar
 sp::gridded(map) <- FALSE
-map@coords <- map@coords / 1000
-map@bbox <- map@bbox / 1000
+min <- apply(map@coords, 2, min)
+map@coords[, 1] <- map@coords[, 1] - min[1]
+map@coords[, 2] <- map@coords[, 2] - min[2]
+map@bbox <- sp::bbox(map@coords)
 sp::gridded(map) <- TRUE
-pts <- pointData@coords[seq(1, nrow(pointData), 5), ] / 1000
-
+pts <- pointData@coords[seq(1, nrow(pointData), 5), ]
+pts[, 1] <- pts[, 1] - min[1]
+pts[, 2] <- pts[, 2] - min[2]
 p <- sp::spplot(
   map, col.regions = soil.colors, colorkey = FALSE, scales = list(draw = TRUE),
   xlab = "Easting (m)", ylab = "Northing (m)",
