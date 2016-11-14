@@ -77,68 +77,73 @@ dev.off()
 rm(p)
 
 # Soil bulk density ###########################################################################################
-# Soil density data is available at two sampling locations, more specificaly at two soil profile descriptions.
-# The approach we employ consists of fitting a splines function to each profile separately and predicting the
-# soil bulk density at the five standard depths (10, 30, 50, 70, and 90 cm) at the respective soil profiles. 
-# We then use the predictions at the two soil profiles to compute the mean and standard deviation of the soil
-# density. The mean and standard deviation of the soil density is used to compute the soil mass per square 
-# metre in each sampling layer (20 cm depth).
-# Bulk density data is in grams per cubic centimetre. Soil mass data is in megagrams.
-# We ignore the data from Afranio (2008) because it covers only the top soil layer (0-5 cm).
+# Soil density data is available at three sampling locations, more specificaly at threee soil profiles 
+# described in the year o 2011.
+# Bulk density data is in grams per cubic centimetre.
+# The approach we employ consists of fitting a spline function to the soil profile data and predicting the
+# soil bulk density at the five standard depths (10, 30, 50, 70, and 90 cm). Predicted values and prediction
+# error variance are used to compute the soil mass per square metre in each sampling layer (20 cm depth). 
+# Soil mass data is in megagrams.
+
+# load data
 density <- read.table("data/soil/density.csv", sep = ";", header = TRUE, dec = ",")
 density$BUDE <- round(density$BUDE, 2)
-density <- density[density$source != "Afranio 2008", ]
+density <- density[order(density$profile), ]
 head(density)
 
-# fit linear model to bulk density data using depth as explanatory variable
-plot(BUDE ~ depth, density)
+# fit linear model to bulk density using depth as explanatory variable
+# We choose the number of degrees of freedom of the natural spline based on the RMSE and R-squared 
+# returned by a leave-one-out cross validation. We find out that a compromise solution is to use five 
+# degrees of freedom.
+df <- 1:6
+fit_bude <- lapply(df, function (x) 
+  caret::train(BUDE ~ splines::ns(depth, df = x), density, method = "lm",
+               trControl = caret::trainControl(method = "LOOCV")))
+cv <- sapply(fit_bude, function (x) x$results)
+c(which.min(cv["RMSE", ]), which.max(cv["Rsquared", ]))
 fit_bude <- lm(BUDE ~ splines::ns(depth, df = 5), density)
+
+# Make predictions
 newdata <- data.frame(depth = seq(0, max(density$depth), 1))
 pred_bude <- predict(fit_bude, newdata = newdata, se.fit = TRUE, interval = "prediction", level = 0.90)
 pred_bude2 <- predict(fit_bude, newdata = newdata, se.fit = TRUE, interval = "confidence", level = 0.90)
 
-# prepare figure with BUDE predictions and standard errors
+# Prepare figure with BUDE predictions, confidence interval and prediction interval
 p <- 
   lattice::xyplot(
-  newdata$d ~ pred_bude$fit[, 1], type = "l", col = "black",
-  xlab = expression(paste('Bulk density (Mg ',m^-3,')', sep = '')), ylab = "Depth (cm)",
-  ylim = rev(extendrange(density$depth)),
-  xlim = extendrange(density$BUDE),
-  key = list(corner = c(1, 0.1),
-             points = list(pch = c(20, unique(density$profile))), 
-             text = list(c("Pred", paste("P", unique(density$profile)))), cex = 0.5),
-  panel = function (...) {
-    lattice::panel.grid(v = -1, h = -1)
-    lattice::panel.polygon(
-      y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude$fit[, 2], rev(pred_bude$fit[, 3])), 
-      col = "gray90", border = "gray90")
-    lattice::panel.polygon(
-      y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude2$fit[, 2], rev(pred_bude2$fit[, 3])), 
-      col = "gray85", border = "gray85")
-    lattice::panel.points(density$depth ~ density$BUDE, pch = density$profile, col = "gray25", cex = 0.5)
-    lattice::panel.xyplot(...)
-    lattice::panel.points(
-      newdata$depth[newdata$depth %in% seq(10, 90, 20)] ~ pred_bude$fit[newdata$depth %in% seq(10, 90, 20), 1],
-      pch = 20, col = "black")
-    # lattice::panel.text(
-      # x = 1.075, y = 25, pos = 4,
-      # labels = paste('Adjusted R2 = ', round(summary(fit_bude)$adj.r.squared, 2), sep = ''))
-  }
+    newdata$d ~ pred_bude$fit[, 1], type = "l", col = "black",
+    xlab = expression(paste('Bulk density (Mg ',m^-3,')', sep = '')), ylab = "Depth (cm)",
+    ylim = rev(extendrange(density$depth)),
+    xlim = extendrange(c(density$BUDE, pred_bude$fit[, 2:3])),
+    key = list(corner = c(1, 0.1),
+               points = list(pch = c(20, unique(density$profile))), 
+               text = list(c("Predictions", paste("Profile", unique(density$profile))))),
+    panel = function (...) {
+      lattice::panel.grid(v = -1, h = -1)
+      lattice::panel.polygon(
+        y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude$fit[, 2], rev(pred_bude$fit[, 3])), 
+        col = "gray90", border = "gray90")
+      lattice::panel.polygon(
+        y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude2$fit[, 2], rev(pred_bude2$fit[, 3])), 
+        col = "gray85", border = "gray85")
+      lattice::panel.points(density$depth ~ density$BUDE, pch = density$profile, col = "gray25")
+      lattice::panel.xyplot(...)
+      lattice::panel.points(
+        newdata$depth[newdata$depth %in% seq(10, 90, 20)] ~ 
+          pred_bude$fit[newdata$depth %in% seq(10, 90, 20), 1], pch = 20, col = "black")
+    }
   )
-p$par.settings <- list(fontsize = list(text = 12))
+# p$par.settings <- list(fontsize = list(text = 12))
 dev.off()
-png("res/fig/bude.png", width = 480 * 2, height = 480 * 2, res = 300)
+png("res/fig/bude.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(newdata, pred_bude2, pred_bude, p, density)
 
-# predict bude at standard depths and calculate the prediction error variance
+# predict BUDE at standard depths and calculate the prediction error variance
 bude <- predict(fit_bude, newdata = data.frame(depth = seq(10, 90, 20)), se.fit = TRUE)
 bude <-  
   data.frame(mean = bude$fit, sd = sqrt(1 + c(bude$se.fit / bude$residual.scale) ^ 2) * bude$residual.scale)
-# soil_mass <- (100 * 100 * 20 * density_stats) / 1000 # kilograms
-# soil_mass <- 0.2 * density_stats # megagrams
-# soil_mass$frac <- soil_mass[, "sd"] / soil_mass[, "mean"]
 
 # Volume of coarse fragments ##################################################################################
 p <- 
@@ -149,9 +154,9 @@ p <-
       lattice::panel.rug(..., col = "gray50")
       lattice::panel.histogram(..., col = "gray85")
     })
-p$par.settings <- list(fontsize = list(text = 12))
+# p$par.settings <- list(fontsize = list(text = 12))
 dev.off()
-png("res/fig/ceramics.png", width = 480 * 2, height = 480 * 2, res = 300)
+png("res/fig/ceramics.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(p)
