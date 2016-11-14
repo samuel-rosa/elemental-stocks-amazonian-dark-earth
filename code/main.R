@@ -201,7 +201,7 @@ p <-
 
 # Save image
 dev.off()
-png("res/fig/caldeirao.png", width = 480 * 2, height = 480 * 2, res = 300)
+png("res/fig/caldeirao.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(p, lab, boundary, location, map)
@@ -218,6 +218,7 @@ covar$past_landuse <- (covar$past_landuse - min(covar$past_landuse, na.rm = TRUE
 covar$past_landuse <- exp(covar$past_landuse)
 
 # Save image of covariate
+# We change the coordinates setting the origin to (0, 0) 
 map <- covar
 sp::gridded(map) <- FALSE
 min <- apply(map@coords, 2, min)
@@ -228,6 +229,9 @@ sp::gridded(map) <- TRUE
 pts <- pointData@coords[seq(1, nrow(pointData), 5), ]
 pts[, 1] <- pts[, 1] - min[1]
 pts[, 2] <- pts[, 2] - min[2]
+profiles <- data.frame(x = c(807955, 808041, 808131) - min[1], y = c(9640044, 9640126, 9640150) - min[2])
+
+# prepare figure
 p <- sp::spplot(
   map, col.regions = soil.colors, colorkey = FALSE, scales = list(draw = TRUE),
   xlab = "Easting (m)", ylab = "Northing (m)",
@@ -237,9 +241,11 @@ p <- sp::spplot(
     lattice::panel.points(
       pts, pch = 21, fill = "darkolivegreen3", 
       col.symbol = "dimgrey", cex = 0.5)
+    # Soil profiles with BUDE
+    lattice::panel.points(profiles, pch = 1:3)
   })
 dev.off()
-png("res/fig/covar.png", width = 480 * 2, height = 480 * 2, res = 300)
+png("res/fig/covar.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(p, map, pts)
