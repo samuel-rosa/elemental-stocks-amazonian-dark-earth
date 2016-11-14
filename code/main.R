@@ -154,7 +154,6 @@ p <-
       lattice::panel.rug(..., col = "gray50")
       lattice::panel.histogram(..., col = "gray85")
     })
-# p$par.settings <- list(fontsize = list(text = 12))
 dev.off()
 png("res/fig/ceramics.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
@@ -169,14 +168,6 @@ rm(p)
 # Get image from Google Maps
 location <- c(-60.24, -3.26, -60.22, -3.253)
 map <- ggmap::get_map(location, maptype = "satellite")
-ggmap::ggmap(map)
-# Prepare point data
-# id <- seq(1, nrow(pointData), 5)
-# pts <- data.frame(pointData@coords[id, ])
-# sp::coordinates(pts) <- ~ x + y
-# sp::proj4string(pts) <- sp::proj4string(pointData)
-# pts <- sp::spTransform(pts, sp::CRS("+init=epsg:4326"))
-# pts <- sp::coordinates(pts)
 
 # Prepare polygon data
 boundary <- raster::shapefile("data/QGIS/boundary.shp")
@@ -185,6 +176,7 @@ boundary <- sp::spTransform(boundary, sp::CRS("+init=epsg:4326"))
 boundary@data$id <- rownames(boundary@data)
 lab <- boundary@bbox
 lab <- lab[, 1] + apply(lab, 1, diff) * 0.5
+require(maptools)
 boundary <- ggplot2::fortify(boundary, region = "id")
 
 # Prepare image
@@ -237,11 +229,9 @@ p <- sp::spplot(
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
-    lattice::panel.points(
-      pts, pch = 21, fill = "darkolivegreen3", 
-      col.symbol = "dimgrey", cex = 0.5)
+    lattice::panel.points(pts, pch = 21, fill = "darkolivegreen3", col.symbol = "dimgrey", cex = 0.5)
     # Soil profiles with BUDE
-    lattice::panel.points(profiles, pch = 1:3)
+    lattice::panel.points(profiles, pch = 1:3, col = "white", cex = 0.75)
   })
 dev.off()
 png("res/fig/covar.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
@@ -315,7 +305,7 @@ tooc_plot <-
 tmp <- tooc_plot + addGridLines
 tooc_plot <- tmp + latticeExtra::as.layer(tooc_plot)
 dev.off()
-png("res/fig/tooc_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
+png("res/fig/tooc_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
 tooc_plot
 dev.off()
 
@@ -331,19 +321,19 @@ save(tooc_pred, file = "data/R/tooc_pred.rda")
 
 # compute stocks
 tooc_pred@data[, seq(2, 10, 2)] <- 
-  lapply(1:5, function (i) 
+  lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i]^2 * tooc_pred@data[, seq(2, 10, 2)][, i]^2 + 
-      tooc_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2))
+                 tooc_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2)
+  })
 tooc_pred@data[, seq(1, 9, 2)] <- 
   lapply(1:5, function (i) tooc_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
-tooc_pred@data[, seq(2, 10, 2)] <- tooc_pred@data[, seq(2, 10, 2)] / tooc_pred@data[, seq(1, 9, 2)]
+# tooc_pred@data[, seq(2, 10, 2)] <- tooc_pred@data[, seq(2, 10, 2)] / tooc_pred@data[, seq(1, 9, 2)]
 tooc_pred@data$stock <- rowSums(tooc_pred@data[, seq(1, 9, 2)])
 tooc_pred@data$stock_var <- sqrt(rowSums(tooc_pred@data[, seq(2, 10, 2)]^2))
 
 # save figure with depth-wise predictions
 map <- sp::spplot(
-  tooc_pred, seq(1, 9, 2), layout = c(5, 1), col.regions = soil.colors,
-  main = "Predicted layer-wise total carbon stock (kg)",
+  tooc_pred, seq(1, 9, 2), layout = c(5, 1), col.regions = soil.colors, main = "",
   strip = lattice::strip.custom(factor.levels = paste(seq(10, 90, 20), "cm")),
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
@@ -354,15 +344,14 @@ map <- sp::spplot(
       col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
   })
 dev.off()
-png(filename = "res/fig/tooc_pred.png", height = 480 * 0.70, width = 480*2, res = 72*1.5)
+png(filename = "res/fig/tooc_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
 
-# save figure with depth-wise relative error
+# save figure with depth-wise prediction error standard deviation
 map <- sp::spplot(
-  tooc_pred, seq(2, 10, 2), layout = c(5, 1), col.regions = uncertainty.colors,
-  main = "Relative error of the layer-wise total carbon stock",
+  tooc_pred, seq(2, 10, 2), layout = c(5, 1), col.regions = uncertainty.colors, main = "",
   strip = lattice::strip.custom(factor.levels = paste(seq(10, 90, 20), "cm")),
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
@@ -373,36 +362,41 @@ map <- sp::spplot(
       col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
   })
 dev.off()
-png(filename = "res/fig/tooc_sd.png", height = 480 * 0.70, width = 480*2, res = 72*1.5)
+png(filename = "res/fig/tooc_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
+rm(map)
 
 # save figure with profile predictions
 map <- sp::spplot(
-  tooc_pred, "stock", col.regions = soil.colors, main = "Predicted total carbon stock (kg)",
+  tooc_pred, "stock", col.regions = soil.colors, 
+  main = "",
+  # main = "Predicted total carbon stock (kg)",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
     lattice::panel.points(
-      pointData@coords, cex = 0.5, fill = pointData$col, col = pointData$col, pch = pointData$pch)
+      pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
   })
 dev.off()
-png(filename = "res/fig/tooc_pred_profile.png", width = 600, height = 700, res = 150)
+png(filename = "res/fig/tooc_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
 
-# save figure with profile relative error
+# save figure with profile prediction error standard deviation
 map <- sp::spplot(
-  tooc_pred, "stock_var", col.regions = uncertainty.colors, main = "Relative error of total carbon stock",
+  tooc_pred, "stock_var", col.regions = uncertainty.colors, 
+  main = "",
+  # main = "Relative error of total carbon stock",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
     lattice::panel.points(
-      pointData@coords, cex = 0.5, fill = pointData$col, col = pointData$col, pch = pointData$pch)
+      pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
   })
 dev.off()
-png(filename = "res/fig/tooc_sd_profile.png", width = 600, height = 700, res = 150)
+png(filename = "res/fig/tooc_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
@@ -446,7 +440,7 @@ toca_plot <-
 tmp <- toca_plot + addGridLines
 toca_plot <- tmp + latticeExtra::as.layer(toca_plot)
 dev.off()
-png("res/fig/toca_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
+png("res/fig/toca_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
 toca_plot
 dev.off()
 
@@ -462,19 +456,21 @@ save(toca_pred, file = "data/R/toca_pred.rda")
 
 # compute stocks
 toca_pred@data[, seq(2, 10, 2)] <- 
-  lapply(1:5, function (i) 
+  lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i]^2 * toca_pred@data[, seq(2, 10, 2)][, i]^2 + 
-                 toca_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2))
+                 toca_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2)
+  })
 toca_pred@data[, seq(1, 9, 2)] <- 
   lapply(1:5, function (i) toca_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
-toca_pred@data[, seq(2, 10, 2)] <- toca_pred@data[, seq(2, 10, 2)] / toca_pred@data[, seq(1, 9, 2)]
+# toca_pred@data[, seq(2, 10, 2)] <- toca_pred@data[, seq(2, 10, 2)] / toca_pred@data[, seq(1, 9, 2)]
 toca_pred@data$stock <- rowSums(toca_pred@data[, seq(1, 9, 2)])
 toca_pred@data$stock_var <- sqrt(rowSums(toca_pred@data[, seq(2, 10, 2)]^2))
 
 # save figure with depth-wise predictions
 map <- sp::spplot(
   toca_pred, seq(1, 9, 2), layout = c(5, 1), col.regions = soil.colors,
-  main = "Predicted layer-wise total calcium stock (kg)",
+  main = "",
+  # main = "Predicted layer-wise total calcium stock (kg)",
   strip = lattice::strip.custom(factor.levels = paste(seq(10, 90, 20), "cm")),
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
@@ -485,7 +481,7 @@ map <- sp::spplot(
       col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
   })
 dev.off()
-png(filename = "res/fig/toca_pred.png", height = 480 * 0.70, width = 480*2, res = 72*1.5)
+png(filename = "res/fig/toca_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
@@ -493,7 +489,8 @@ rm(map)
 # save figure with depth-wise prediction error standard deviation
 map <- sp::spplot(
   toca_pred, seq(2, 10, 2), layout = c(5, 1), col.regions = uncertainty.colors,
-  main = "Relative error of the layer-wise total calcium stock",
+  main = "",
+  # main = "Relative error of the layer-wise total calcium stock",
   strip = lattice::strip.custom(factor.levels = paste(seq(10, 90, 20), "cm")),
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
@@ -504,36 +501,41 @@ map <- sp::spplot(
       col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
   })
 dev.off()
-png(filename = "res/fig/toca_sd.png", height = 480 * 0.70, width = 480*2, res = 72*1.5)
+png(filename = "res/fig/toca_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
+rm(map)
 
 # save figure with profile predictions
 map <- sp::spplot(
-  toca_pred, "stock", col.regions = soil.colors, main = "Predicted total calcium stock (kg)",
+  toca_pred, "stock", col.regions = soil.colors, 
+  main = "",
+  # main = "Predicted total calcium stock (kg)",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
     lattice::panel.points(
-      pointData@coords, cex = 0.5, fill = pointData$col, col = pointData$col, pch = pointData$pch)
+      pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
   })
 dev.off()
-png(filename = "res/fig/toca_pred_profile.png", width = 600, height = 700, res = 150)
+png(filename = "res/fig/toca_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
 
 # save figure with profile relative error
 map <- sp::spplot(
-  toca_pred, "stock_var", col.regions = uncertainty.colors, main = "Relative error of total calcium stock",
+  toca_pred, "stock_var", col.regions = uncertainty.colors, 
+  main = "",
+  # main = "Relative error of total calcium stock",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
     lattice::panel.points(
-      pointData@coords, cex = 0.5, fill = pointData$col, col = pointData$col, pch = pointData$pch)
+      pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
   })
 dev.off()
-png(filename = "res/fig/toca_sd_profile.png", width = 600, height = 700, res = 150)
+png(filename = "res/fig/toca_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
@@ -577,7 +579,7 @@ toph_plot <-
 tmp <- toph_plot + addGridLines
 toph_plot <- tmp + latticeExtra::as.layer(toph_plot)
 dev.off()
-png("res/fig/toph_cross_vario.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
+png("res/fig/toph_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
 toph_plot
 dev.off()
 
@@ -593,19 +595,21 @@ save(toph_pred, file = "data/R/toph_pred.rda")
 
 # compute stocks
 toph_pred@data[, seq(2, 10, 2)] <- 
-  lapply(1:5, function (i) 
+  lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i]^2 * toph_pred@data[, seq(2, 10, 2)][, i]^2 + 
-                 toph_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2))
+                 toph_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2) 
+  })
 toph_pred@data[, seq(1, 9, 2)] <- 
   lapply(1:5, function (i) toph_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
-toph_pred@data[, seq(2, 10, 2)] <- toph_pred@data[, seq(2, 10, 2)] / toph_pred@data[, seq(1, 9, 2)]
+# toph_pred@data[, seq(2, 10, 2)] <- toph_pred@data[, seq(2, 10, 2)] / toph_pred@data[, seq(1, 9, 2)]
 toph_pred@data$stock <- rowSums(toph_pred@data[, seq(1, 9, 2)])
 toph_pred@data$stock_var <- sqrt(rowSums(toph_pred@data[, seq(2, 10, 2)]^2))
 
 # save figure with depth-wise predictions
 map <- sp::spplot(
   toph_pred, seq(1, 9, 2), layout = c(5, 1), col.regions = soil.colors,
-  main = "Predicted layer-wise total phosphorus stock (kg)",
+  main = "",
+  # main = "Predicted layer-wise total phosphorus stock (kg)",
   strip = lattice::strip.custom(factor.levels = paste(seq(10, 90, 20), "cm")),
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
@@ -616,7 +620,7 @@ map <- sp::spplot(
       col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
   })
 dev.off()
-png(filename = "res/fig/toph_pred.png", height = 480 * 0.70, width = 480*2, res = 72*1.5)
+png(filename = "res/fig/toph_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
@@ -624,7 +628,8 @@ rm(map)
 # save figure with depth-wise prediction error standard deviation
 map <- sp::spplot(
   toph_pred, seq(2, 10, 2), layout = c(5, 1), col.regions = uncertainty.colors,
-  main = "Relative error of the layer-wise total phosphorus stock",
+  main = "",
+  # main = "Relative error of the layer-wise total phosphorus stock",
   strip = lattice::strip.custom(factor.levels = paste(seq(10, 90, 20), "cm")),
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
@@ -635,37 +640,41 @@ map <- sp::spplot(
       col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
   })
 dev.off()
-png(filename = "res/fig/toph_sd.png", height = 480 * 0.70, width = 480*2, res = 72*1.5)
+png(filename = "res/fig/toph_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
 
 # save figure with profile predictions
 map <- sp::spplot(
-  toph_pred, "stock", col.regions = soil.colors, main = "Predicted total phosphorus stock (kg)",
+  toph_pred, "stock", col.regions = soil.colors, 
+  main = "",
+  # main = "Predicted total phosphorus stock (kg)",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
     lattice::panel.points(
-      pointData@coords, cex = 0.5, fill = pointData$col, col = pointData$col, pch = pointData$pch)
+      pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
   })
 dev.off()
-png(filename = "res/fig/toph_pred_profile.png", width = 600, height = 700, res = 150)
+png(filename = "res/fig/toph_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
 
 # save figure with profile relative error
 map <- sp::spplot(
-  toph_pred, "stock_var", col.regions = uncertainty.colors, main = "Relative error of total phosphorus stock",
+  toph_pred, "stock_var", col.regions = uncertainty.colors, 
+  main = "",
+  # main = "Relative error of total phosphorus stock",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
     lattice::panel.points(
-      pointData@coords, cex = 0.5, fill = pointData$col, col = pointData$col, pch = pointData$pch)
+      pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
   })
 dev.off()
-png(filename = "res/fig/toph_sd_profile.png", width = 600, height = 700, res = 150)
+png(filename = "res/fig/toph_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
