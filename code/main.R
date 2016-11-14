@@ -169,7 +169,7 @@ rm(p)
 # Get image from Google Maps
 location <- c(-60.24, -3.26, -60.22, -3.253)
 map <- ggmap::get_map(location, maptype = "satellite")
-
+ggmap::ggmap(map)
 # Prepare point data
 # id <- seq(1, nrow(pointData), 5)
 # pts <- data.frame(pointData@coords[id, ])
@@ -215,7 +215,6 @@ rm(p, lab, boundary, location, map)
 covar <- spgrass7::readRAST("past_landuse")
 covar$past_landuse <- (covar$past_landuse - min(covar$past_landuse, na.rm = TRUE)) / 
   (max(covar$past_landuse, na.rm = TRUE) - min(covar$past_landuse, na.rm = TRUE))
-covar$past_landuse <- exp(covar$past_landuse)
 
 # Save image of covariate
 # We change the coordinates setting the origin to (0, 0) 
@@ -233,7 +232,7 @@ profiles <- data.frame(x = c(807955, 808041, 808131) - min[1], y = c(9640044, 96
 
 # prepare figure
 p <- sp::spplot(
-  map, col.regions = soil.colors, colorkey = FALSE, scales = list(draw = TRUE),
+  map, col.regions = soil.colors, colorkey = TRUE, scales = list(draw = TRUE),
   xlab = "Easting (m)", ylab = "Northing (m)",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
@@ -249,6 +248,9 @@ png("res/fig/covar.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(p, map, pts)
+
+# Use exponential
+covar$past_landuse <- exp(covar$past_landuse)
 
 # Total organic carbon
 soil_var <- prepare_soil_data(pointData = pointData, sv = "TOOC", covar = covar)
