@@ -53,6 +53,12 @@ sp::coordinates(pointData) <- ~ x + y
 sp::proj4string(pointData) <- sp::CRS("+init=epsg:32720")
 plot(pointData@coords, pch = 20, cex = 0.3)
 
+# Compute the average distance between nearest neighbouring observations
+x <- pointData@coords[seq(1, nrow(pointData@coords), 5), ]
+d <- apply(as.matrix(dist(x)), 1, function (x) min(x[x > 0]))
+mean(d)
+range(d)
+
 # Check depth-wise empirical distribution
 # The bw plots show that the concentration of both `C` and `Ca` decreases with depth, as well as its 
 # variation. This suggests that there is a strong vertical trend in `C` and `Ca` concentrations. On the other
@@ -563,3 +569,5 @@ png(filename = "res/fig/toph_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
+
+plot(exp(-seq(0, 1, 0.1) / 0.2))
