@@ -1,4 +1,3 @@
-
 # Start OS dependent GRASS GIS ----
 if (.Platform$OS.type == "unix") {
   gisBase <- "/usr/lib/grass70/"
@@ -289,4 +288,10 @@ profile_predictions <-
         lattice::panel.points(
           pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
       })
+  }
+
+# Compute the slope of the exponential covariance function
+slope <-
+  function (lmc) {
+    sapply(lmc$model, function (x) sum(x$psill) / (0.333 * x$range[2]))
   }

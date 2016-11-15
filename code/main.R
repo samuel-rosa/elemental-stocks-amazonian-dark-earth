@@ -318,6 +318,7 @@ dev.off()
 
 # save results
 save(tooc_vario, tooc_lmc, file = "data/R/tooc_vario.rda")
+# load("data/R/tooc_vario.rda")
 
 # make spatial predictions
 t0 <- proc.time()
