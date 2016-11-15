@@ -240,3 +240,53 @@ back_transform <-
 
 # Add grid lines to lattice graphics aligned with the axis labels ----
 addGridLines <- latticeExtra::layer(lattice::panel.grid(h = -1, v = -1))
+
+# Compute total stocks ----
+totals <- 
+  function (x) {
+    
+    total <- sum(x@data$stock, na.rm = TRUE)
+    total_sd <- sqrt(sum(x@data$stock ^ 2, na.rm = TRUE))
+    
+    res <- data.frame(total = total, total_sd = total_sd)
+    return (res)
+  }
+
+# Prepare figure with depth-wise predictions ----
+layer_predictions <-
+  function (x, var, main = "") {
+    
+    if (var == "pred") {
+      var <- seq(1, 9, 2)
+      col.regions <- soil.colors
+    } else {
+      var <- seq(2, 10, 2)
+      col.regions <- uncertainty.colors
+    }
+    
+    sp::spplot(
+      x, var, layout = c(5, 1), col.regions = col.regions, main = main,
+      strip = lattice::strip.custom(factor.levels = paste(seq(10, 90, 20), "cm")),
+      panel = function (...) {
+        lattice::panel.grid(h = -1, v = -1)
+        lattice::panel.levelplot(...)
+        d <- depth[lattice::panel.number()]
+        lattice::panel.points(
+          pointData@coords[pointData$d == d, ], cex = 0.5, fill = pointData$col[pointData$d == d], 
+          col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
+      })
+  }
+
+# Prepare figure with profile predictions ----
+profile_predictions <-
+  function (x, var, col.regions = soil.colors, main = "") {
+    sp::spplot(
+      obj = x, zcol = var, col.regions = col.regions, 
+      main = main,
+      panel = function (...) {
+        lattice::panel.grid(h = -1, v = -1)
+        lattice::panel.levelplot(...)
+        lattice::panel.points(
+          pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
+      })
+  }
