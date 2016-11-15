@@ -303,6 +303,7 @@ apply(abs(tooc_cv), 2, which.max)
 tooc_cv <- tooc_cv[1, ]
 tooc_lmc <- tooc_lmc[[1]]
 plot(tooc_vario$v, tooc_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
+round(slope(tooc_lmc), 4)
 
 # prepare variogram plot
 tooc_plot <-
@@ -318,6 +319,7 @@ dev.off()
 
 # save results
 save(tooc_vario, tooc_lmc, file = "data/R/tooc_vario.rda")
+# load("data/R/tooc_vario.rda")
 
 # make spatial predictions
 t0 <- proc.time()
@@ -403,6 +405,7 @@ apply(abs(toca_cv), 2, which.max)
 toca_cv <- toca_cv[3, ]
 toca_lmc <- toca_lmc[[3]]
 plot(toca_vario$v, toca_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
+round(slope(toca_lmc), 4)
 
 # prepare variogram plot
 toca_plot <- 
@@ -417,6 +420,7 @@ dev.off()
 
 # save results
 save(toca_vario, toca_lmc, file = "data/R/toca_vario.rda")
+# load("data/R/toca_vario.rda")
 
 # make spatial predictions
 t0 <- proc.time()
@@ -502,6 +506,7 @@ apply(abs(toph_cv), 2, which.max)
 toph_cv <- toph_cv[3, ]
 toph_lmc <- toph_lmc[[3]]
 plot(toph_vario$v, toph_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
+round(slope(toph_lmc), 4)
 
 # prepare variogram plot
 toph_plot <- 
@@ -516,6 +521,7 @@ dev.off()
 
 # save results
 save(toph_vario, toph_lmc, file = "data/R/toph_vario.rda")
+# load("data/R/toph_vario.rda")
 
 # make spatial predictions
 t0 <- proc.time()
