@@ -84,8 +84,8 @@ dev.off()
 rm(p)
 
 # Soil bulk density ###########################################################################################
-# Soil density data is available at three sampling locations, more specificaly at threee soil profiles 
-# described in the year o 2011.
+# Soil density data is available at three sampling locations, more specificaly at three soil profiles 
+# described in the year of 2011.
 # Bulk density data is in grams per cubic centimetre.
 # The approach we employ consists of fitting a spline function to the soil profile data and predicting the
 # soil bulk density at the five standard depths (10, 30, 50, 70, and 90 cm). Predicted values and prediction
@@ -109,6 +109,7 @@ fit_bude <- lapply(df, function (x)
 cv <- sapply(fit_bude, function (x) x$results)
 c(which.min(cv["RMSE", ]), which.max(cv["Rsquared", ]))
 fit_bude <- lm(BUDE ~ splines::ns(depth, df = 5), density)
+# splines::ns(density$depth, df = 5)
 
 # Make predictions
 newdata <- data.frame(depth = seq(0, max(density$depth), 1))
@@ -135,6 +136,8 @@ p <-
         col = "gray85", border = "gray85")
       lattice::panel.points(density$depth ~ density$BUDE, pch = density$profile, col = "gray25")
       lattice::panel.xyplot(...)
+      lattice::panel.abline(
+        h = attr(splines::ns(density$depth, df = 5), "knots"), lty = "dashed", col = "gray75")
       lattice::panel.points(
         newdata$depth[newdata$depth %in% seq(10, 90, 20)] ~ 
           pred_bude$fit[newdata$depth %in% seq(10, 90, 20), 1], pch = 20, col = "black")
@@ -155,7 +158,7 @@ bude <-
 # Volume of coarse fragments ##################################################################################
 p <- 
   lattice::histogram(
-    pointData$FRAG, xlab = "Volume of ceramics (%)",
+    pointData$FRAG, xlab = "Volume of ceramics (%)", nint = 50,
     panel = function (...) {
       lattice::panel.grid(h = -1, v = -1)
       lattice::panel.rug(..., col = "gray50")
