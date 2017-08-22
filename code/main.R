@@ -103,7 +103,7 @@ head(density)
 # returned by a leave-one-out cross validation. We find out that a compromise solution is to use five 
 # degrees of freedom.
 df <- 1:6
-# fit_bude <- lapply(df, function (i) 
+# fit_bude <- lapply(df, function (i)
 #   caret::train(BUDE ~ splines::ns(depth, df = i), data = density, method = "lm",
 #                trControl = caret::trainControl(method = "LOOCV")))
 fit_bude <- list()
@@ -190,7 +190,7 @@ rm(p)
 
 # Get image from Google Maps
 location <- c(-60.24, -3.26, -60.22, -3.253)
-map <- ggmap::get_map(location, maptype = "satellite")
+map <- ggmap::get_map(location, maptype = "satellite", color = "bw")
 
 # Prepare polygon data
 boundary <- raster::shapefile("data/QGIS/boundary.shp")
@@ -199,27 +199,71 @@ boundary <- sp::spTransform(boundary, sp::CRS("+init=epsg:4326"))
 boundary@data$id <- rownames(boundary@data)
 lab <- boundary@bbox
 lab <- lab[, 1] + apply(lab, 1, diff) * 0.5
-require(maptools)
 boundary <- ggplot2::fortify(boundary, region = "id")
 
 # Prepare image
 p <- 
   ggmap::ggmap(map) + 
-  ggplot2::xlab("Longitude") +
-  ggplot2::ylab("Latitude") +
+  ggplot2::xlab("Longitude (°)") +
+  ggplot2::ylab("Latitude (°)") +
   ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
                  axis.text.y = ggplot2::element_text(color = "black")) +
   ggplot2::geom_polygon(
     ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  ggplot2::geom_text(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261), size = 3) +
-  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005), size = 3)
+  ggplot2::geom_text(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261), size = 4) +
+  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005), size = 4)
 
 # Save image
 dev.off()
-png("res/fig/caldeirao.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
+png("res/fig/caldeirao.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
-rm(p, lab, boundary, location, map)
+rm(p, location, map)
+
+# Get regional-scale image
+location <- c(-60.76, -3.76, -59.00, -2.50)
+map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+
+# Prepare regional-scale image
+p <- 
+  ggmap::ggmap(map) + 
+  ggplot2::xlab("Longitude (°)") +
+  ggplot2::ylab("Latitude (°)") +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
+                 axis.text.y = ggplot2::element_text(color = "black")) +
+  ggplot2::geom_polygon(
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
+  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1] - 0.11, y = lab[2] + 0.0005), size = 4)
+
+# Save regional-scale image
+dev.off()
+png("res/fig/manaus.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+p
+dev.off()
+rm(p, location, map)
+
+# Get country-scale image
+location <- c(-74.5, -34.5, -29.5, 5.5)
+map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+
+# Prepare regional-scale image
+p <- 
+  ggmap::ggmap(map) + 
+  ggplot2::xlab("Longitude (°)") +
+  ggplot2::ylab("Latitude (°)") +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
+                 axis.text.y = ggplot2::element_text(color = "black")) +
+  ggplot2::geom_polygon(
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
+  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1] - 0.09, y = lab[2] + 0.0005), size = 4)
+
+# Save country-scale image
+dev.off()
+png("res/fig/brasil.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+p
+dev.off()
+
+rm(p, location, map, lab, boundary)
 
 # Deterministic component of spatial variation ################################################################
 # We model the soil spatial variation using depth-wise linear models where the independed variable is the
@@ -247,17 +291,21 @@ profiles <- data.frame(x = c(807955, 808041, 808131) - min[1], y = c(9640044, 96
 
 # prepare figure
 p <- sp::spplot(
-  map, col.regions = soil.colors, colorkey = TRUE, scales = list(draw = TRUE),
+  map, 
+  # col.regions = soil.colors, 
+  col.regions = gray.colors(100, start = 1, end = 0),
+  colorkey = TRUE, scales = list(draw = TRUE),
   xlab = "Easting (m)", ylab = "Northing (m)",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
-    lattice::panel.points(pts, pch = 21, fill = "darkolivegreen3", col.symbol = "dimgrey", cex = 0.5)
+    lattice::panel.points(pts, pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
     # Soil profiles with BUDE
-    lattice::panel.points(profiles, pch = 1:3, col = "white", cex = 0.75)
+    lattice::panel.text(profiles, labels = c("P1", "P2", "P3"), col = "black", cex = 0.75, pos = 1)
+    lattice::panel.points(profiles, pch = 2, col = "black", cex = 0.75)
   })
 dev.off()
-png("res/fig/covar.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
+png("res/fig/covar.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, map, pts)
