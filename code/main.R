@@ -103,9 +103,9 @@ head(density)
 # returned by a leave-one-out cross validation. We find out that a compromise solution is to use five 
 # degrees of freedom.
 df <- 1:6
-fit_bude <- lapply(df, function (i) 
-  caret::train(BUDE ~ splines::ns(depth, df = i), data = density, method = "lm",
-               trControl = caret::trainControl(method = "LOOCV")))
+# fit_bude <- lapply(df, function (i) 
+#   caret::train(BUDE ~ splines::ns(depth, df = i), data = density, method = "lm",
+#                trControl = caret::trainControl(method = "LOOCV")))
 fit_bude <- list()
 fit_bude[[1]] <- caret::train(BUDE ~ splines::ns(depth, df = 1), data = density, method = "lm",
                             trControl = caret::trainControl(method = "LOOCV"))
