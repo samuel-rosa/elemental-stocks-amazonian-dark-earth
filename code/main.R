@@ -103,9 +103,22 @@ head(density)
 # returned by a leave-one-out cross validation. We find out that a compromise solution is to use five 
 # degrees of freedom.
 df <- 1:6
-fit_bude <- lapply(df, function (x) 
-  caret::train(BUDE ~ splines::ns(depth, df = x), density, method = "lm",
+fit_bude <- lapply(df, function (i) 
+  caret::train(BUDE ~ splines::ns(depth, df = i), data = density, method = "lm",
                trControl = caret::trainControl(method = "LOOCV")))
+fit_bude <- list()
+fit_bude[[1]] <- caret::train(BUDE ~ splines::ns(depth, df = 1), data = density, method = "lm",
+                            trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[2]] <- caret::train(BUDE ~ splines::ns(depth, df = 2), data = density, method = "lm",
+                              trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[3]] <- caret::train(BUDE ~ splines::ns(depth, df = 3), data = density, method = "lm",
+                              trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[4]] <- caret::train(BUDE ~ splines::ns(depth, df = 4), data = density, method = "lm",
+                              trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[5]] <- caret::train(BUDE ~ splines::ns(depth, df = 5), data = density, method = "lm",
+                              trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[6]] <- caret::train(BUDE ~ splines::ns(depth, df = 6), data = density, method = "lm",
+                              trControl = caret::trainControl(method = "LOOCV"))
 cv <- sapply(fit_bude, function (x) x$results)
 c(which.min(cv["RMSE", ]), which.max(cv["Rsquared", ]))
 fit_bude <- lm(BUDE ~ splines::ns(depth, df = 5), density)
@@ -344,6 +357,7 @@ tooc_pred@data[, seq(1, 9, 2)] <-
 tooc_pred@data$stock <- rowSums(tooc_pred@data[, seq(1, 9, 2)])
 tooc_pred@data$stock_var <- sqrt(rowSums(tooc_pred@data[, seq(2, 10, 2)]^2))
 totals(tooc_pred)
+range(tooc_pred$stock, na.rm = TRUE)
 
 # save figure with depth-wise predictions
 map <- layer_predictions(tooc_pred, "pred")
@@ -423,7 +437,6 @@ dev.off()
 
 # save results
 save(toca_vario, toca_lmc, file = "data/R/toca_vario.rda")
-# load("data/R/toca_vario.rda")
 
 # make spatial predictions
 t0 <- proc.time()
@@ -445,6 +458,8 @@ toca_pred@data[, seq(1, 9, 2)] <-
 toca_pred@data$stock <- rowSums(toca_pred@data[, seq(1, 9, 2)])
 toca_pred@data$stock_var <- sqrt(rowSums(toca_pred@data[, seq(2, 10, 2)]^2))
 totals(toca_pred)
+range(toca_pred$stock, na.rm = TRUE)
+mean(toca_pred$stock, na.rm = TRUE)
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toca_pred, "pred")
@@ -532,6 +547,7 @@ toph_pred <- predict(object = toph_lmc, newdata = covar)
 proc.time() - t0
 toph_pred <- back_transform(pred = toph_pred, soil_data = toph_data)
 save(toph_pred, file = "data/R/toph_pred.rda")
+# load("data/R/toph_pred.rda")
 
 # compute stocks
 # load("data/R/toph_pred.rda")
@@ -546,6 +562,8 @@ toph_pred@data[, seq(1, 9, 2)] <-
 toph_pred@data$stock <- rowSums(toph_pred@data[, seq(1, 9, 2)])
 toph_pred@data$stock_var <- sqrt(rowSums(toph_pred@data[, seq(2, 10, 2)]^2))
 totals(toph_pred)
+range(toph_pred$stock, na.rm = TRUE)
+mean(toph_pred$stock, na.rm = TRUE)
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toph_pred, "pred")
