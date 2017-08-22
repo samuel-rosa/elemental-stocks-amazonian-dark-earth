@@ -331,49 +331,35 @@ write.csv(res_anova, file = "res/tab/anova.csv")
 
 rm(soil_var, res_anova, tooc_anova, toca_anova, toph_anova)
 
-# Spatial modelling of the pretic criteria #################################################################### 
-# pretic_data <- pointData[pointData$d == 10, c("EXPH", "CAMG", "TOOC")]
-# pretic_data@data[, c("EXPH", "CAMG", "TOOC")] <- pretic_data@data[, c("EXPH", "CAMG", "TOOC")] + 1
-# 
-# # Box-Cox transformation
-# lambda <- lapply(pretic_data@data[, c("EXPH", "CAMG", "TOOC")], car::powerTransform)
-# lambda <- sapply(lambda, function (x) x$lambda)
-# lambda[which(lambda < 0)] <- 0
-# pretic_data@data[, c("EXPH", "CAMG", "TOOC")] <- 
-#   lapply(1:length(lambda), function (i) 
-#     car::bcPower(pretic_data@data[, c("EXPH", "CAMG", "TOOC")][, i], lambda[i]))
-# 
-# # Standardization
-# sv_mean <- sapply(pretic_data@data[, c("EXPH", "CAMG", "TOOC")], mean)
-# sv_sd <- sapply(pretic_data@data[, c("EXPH", "CAMG", "TOOC")], sd)
-# pretic_data@data[, c("EXPH", "CAMG", "TOOC")] <- 
-#   lapply(1:3, function (i) (pretic_data@data[, c("EXPH", "CAMG", "TOOC")][, i] - sv_mean[i]) / sv_sd[i])
-# 
-# # Sample covariate
-# sp::proj4string(pretic_data) <- sp::proj4string(covar)
-# pretic_data$past_landuse <- sp::over(pretic_data, covar)$past_landuse
-# 
-# # Fit auto- and cross-variograms
-# g <- gstat::gstat(NULL, id = "EXPH", data = pretic_data, form = EXPH ~ past_landuse)
-# g <- gstat::gstat(g, id = "CAMG", data = pretic_data, form = CAMG ~ past_landuse)
-# g <- gstat::gstat(g, id = "TOOC", data = pretic_data, form = TOOC ~ past_landuse)
-# v <- gstat::variogram(g, boundaries = pedometrics::vgmLags(pretic_data@coords, n = 5)[-1])
-# plot(v, scales = list(relation = "same"), pch = 20, cex = 0.5)
-# pretic_cross <- gstat::gstat(
-#   g, id = "TOOC", model = gstat::vgm(psill = 0.8, model = "Exp", range = 50, nugget = 0.2), fill.all = TRUE)
-# pretic_lmc <- gstat::fit.lmc(v = v, g = pretic_cross, correct.diagonal = 1.01)
-# plot(v, pretic_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, 
-#      ylim = extendrange(sapply(pretic_lmc$model, function (x) x[, "psill"])))
-# 
-# # make spatial simulations
-# nsim <- 1
-# t0 <- proc.time()
-# set.seed(1984)
-# pretic_sim <- predict(
-#   object = pretic_lmc, newdata = covar, nsim = nsim, 
-#   nmax = 8, maxdist = pretic_lmc$model$TOOC$range[2],
-#   debug.level = -1)
-# (proc.time() - t0) / 3600
+# Map the pretic criteria #####################################################################################
+# This first attempt is based on the use of nearest neighbour distances.
+pretic_dist <- SpatialTools::dist2(sp::coordinates(covar), pointData@coords[pointData$d == 10, ])
+pretic_dist <- apply(pretic_dist, 1, which.min)
+pretic_dist <- pointData@data[pointData$d == 10, "PRETIC"][pretic_dist]
+pretic_dist <- ifelse(is.na(covar$past_landuse), NA, pretic_dist)
+pretic_dist <- cbind(sp::coordinates(covar), pretic_dist)
+pretic_dist <- as.data.frame(pretic_dist)
+pretic_dist$pretic_dist <- ifelse(pretic_dist$pretic_dist == 1, "Pretic", "Adjacent")
+pretic_dist$pretic_dist <- as.factor(pretic_dist$pretic_dist)
+sp::gridded(pretic_dist) <- ~ s1 + s2
+
+# Save figure
+p <- sp::spplot(
+  pretic_dist,
+  col.regions = rev(gray.colors(2)),
+  colorkey = TRUE, scales = list(draw = TRUE),
+  xlab = "Easting (m)", ylab = "Northing (m)",
+  panel = function (...) {
+    lattice::panel.grid(h = -1, v = -1)
+    lattice::panel.levelplot(...)
+    lattice::panel.points(
+      pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
+  })
+dev.off()
+png("res/fig/pretic.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+p
+dev.off()
+rm(p, pretic_dist)
 
 # Stochastic component of spatial variation ###################################################################
 
