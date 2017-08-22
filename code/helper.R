@@ -1,6 +1,6 @@
 # Start OS dependent GRASS GIS ----
 if (.Platform$OS.type == "unix") {
-  gisBase <- "/usr/lib/grass70/"
+  gisBase <- "/usr/lib/grass72/"
 } else {
   gisBase <- "C:/Program Files (x86)/GRASS GIS 7.0.4-1"
 }
