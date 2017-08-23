@@ -240,17 +240,6 @@ back_transform <-
 # Add grid lines to lattice graphics aligned with the axis labels ----
 addGridLines <- latticeExtra::layer(lattice::panel.grid(h = -1, v = -1))
 
-# Compute total stocks ----
-totals <- 
-  function (x) {
-    
-    total <- sum(x@data$stock, na.rm = TRUE)
-    total_sd <- sqrt(sum(x@data$stock ^ 2, na.rm = TRUE))
-    
-    res <- data.frame(total = total, total_sd = total_sd)
-    return (res)
-  }
-
 # Prepare figure with depth-wise predictions ----
 layer_predictions <-
   function (x, var, main = "") {
@@ -263,16 +252,21 @@ layer_predictions <-
       col.regions <- uncertainty.colors
     }
     
+    # labs <- paste(seq(10, 90, 20), "cm")
+    labs <- paste(seq(0, 80, 20), "-", seq(20, 100, 20), " cm", sep = "")
+    
     sp::spplot(
       x, var, layout = c(5, 1), col.regions = col.regions, main = main,
-      strip = lattice::strip.custom(factor.levels = paste(seq(10, 90, 20), "cm")),
+      strip = lattice::strip.custom(factor.levels = labs),
       panel = function (...) {
         lattice::panel.grid(h = -1, v = -1)
         lattice::panel.levelplot(...)
         d <- depth[lattice::panel.number()]
         lattice::panel.points(
-          pointData@coords[pointData$d == d, ], cex = 0.5, fill = pointData$col[pointData$d == d], 
-          col = pointData$col[pointData$d == d], pch = pointData$pch[pointData$d == d])
+          pointData@coords[pointData$d == d, ], cex = 0.25, lwd = 0.5,
+          # fill = pointData$col[pointData$d == d], col = pointData$col[pointData$d == d],
+          # pch = pointData$pch[pointData$d == d] 
+          col = "black", fill = "lightgray", pch = 21)
       })
   }
 
@@ -286,7 +280,9 @@ profile_predictions <-
         lattice::panel.grid(h = -1, v = -1)
         lattice::panel.levelplot(...)
         lattice::panel.points(
-          pointData@coords, fill = pointData$col, col = pointData$col, pch = pointData$pch)
+          pointData@coords[pointData$d == 10, ],
+          col = "black", fill = "lightgray", pch = 21, cex = 0.5, lwd = 0.5)
+          # fill = pointData$col, col = pointData$col, pch = pointData$pch)
       })
   }
 
