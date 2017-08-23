@@ -463,15 +463,15 @@ gc()
 # load("data/R/tooc_pred.rda")
 tooc_pred@data[, seq(2, 10, 2)] <- 
   lapply(1:5, function (i) {
-    0.2 * sqrt(bude$mean[i]^2 * tooc_pred@data[, seq(2, 10, 2)][, i]^2 + 
-                 tooc_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2)
+    0.2 * sqrt(bude$mean[i] ^ 2 * tooc_pred@data[, seq(2, 10, 2)][, i] ^ 2 + 
+                 tooc_pred@data[, seq(1, 9, 2)][, i] ^ 2 * bude$sd[i] ^ 2)
   })
 tooc_pred@data[, seq(1, 9, 2)] <- 
   lapply(1:5, function (i) tooc_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
-# tooc_pred@data[, seq(2, 10, 2)] <- tooc_pred@data[, seq(2, 10, 2)] / tooc_pred@data[, seq(1, 9, 2)]
 tooc_pred@data$stock <- rowSums(tooc_pred@data[, seq(1, 9, 2)])
-tooc_pred@data$stock_var <- sqrt(rowSums(tooc_pred@data[, seq(2, 10, 2)]^2))
-totals(tooc_pred)
+tooc_pred@data$stock_var <- sqrt(rowSums(tooc_pred@data[, seq(2, 10, 2)] ^ 2))
+sum(tooc_pred$stock, na.rm = TRUE)
+mean(tooc_pred$stock, na.rm = TRUE)
 range(tooc_pred$stock, na.rm = TRUE)
 
 # save figure with depth-wise predictions
@@ -800,7 +800,7 @@ rm(tooc_ade, camg_ade, exph_ade)
 gc()
 pretic$pretic <- as.factor(ifelse(pretic$layer >= 0.50, "Pretic", "Adjacent"))
 
-# prepa figure
+# prepare figure
 min <- apply(pretic@coords, 2, min)
 pretic@coords[, 1] <- pretic@coords[, 1] - min[1]
 pretic@coords[, 2] <- pretic@coords[, 2] - min[2]
@@ -827,6 +827,10 @@ rm(p, pts)
 gc()
 
 # 
+pretic <- as(pretic, "SpatialGridDataFrame")
+by(tooc_pred$stock, pretic$pretic, sum, na.rm = TRUE)
+by(tooc_pred$stock, pretic$pretic, mean, na.rm = TRUE)
+by(tooc_pred$stock, pretic$pretic, function (x) range(x))
 
 # TOTAL CALCIUM ----
 sv <- "TOCA"
@@ -891,12 +895,16 @@ toca_pred@data[, seq(2, 10, 2)] <-
   })
 toca_pred@data[, seq(1, 9, 2)] <- 
   lapply(1:5, function (i) toca_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
-# toca_pred@data[, seq(2, 10, 2)] <- toca_pred@data[, seq(2, 10, 2)] / toca_pred@data[, seq(1, 9, 2)]
 toca_pred@data$stock <- rowSums(toca_pred@data[, seq(1, 9, 2)])
-toca_pred@data$stock_var <- sqrt(rowSums(toca_pred@data[, seq(2, 10, 2)]^2))
-totals(toca_pred)
-range(toca_pred$stock, na.rm = TRUE)
+toca_pred@data$stock_var <- sqrt(rowSums(toca_pred@data[, seq(2, 10, 2)] ^ 2))
+
+sum(toca_pred$stock, na.rm = TRUE)
 mean(toca_pred$stock, na.rm = TRUE)
+range(toca_pred$stock, na.rm = TRUE)
+
+by(toca_pred$stock, pretic$pretic, sum, na.rm = TRUE)
+by(toca_pred$stock, pretic$pretic, mean, na.rm = TRUE)
+by(toca_pred$stock, pretic$pretic, function (x) range(x))
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toca_pred, "pred")
@@ -995,12 +1003,16 @@ toph_pred@data[, seq(2, 10, 2)] <-
   })
 toph_pred@data[, seq(1, 9, 2)] <- 
   lapply(1:5, function (i) toph_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
-# toph_pred@data[, seq(2, 10, 2)] <- toph_pred@data[, seq(2, 10, 2)] / toph_pred@data[, seq(1, 9, 2)]
 toph_pred@data$stock <- rowSums(toph_pred@data[, seq(1, 9, 2)])
 toph_pred@data$stock_var <- sqrt(rowSums(toph_pred@data[, seq(2, 10, 2)]^2))
-totals(toph_pred)
-range(toph_pred$stock, na.rm = TRUE)
+
+sum(toph_pred$stock, na.rm = TRUE)
 mean(toph_pred$stock, na.rm = TRUE)
+range(toph_pred$stock, na.rm = TRUE)
+
+by(toph_pred$stock, pretic$pretic, sum, na.rm = TRUE)
+by(toph_pred$stock, pretic$pretic, mean, na.rm = TRUE)
+by(toph_pred$stock, pretic$pretic, function (x) range(x))
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toph_pred, "pred")
@@ -1033,5 +1045,3 @@ png(filename = "res/fig/toph_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
-
-
