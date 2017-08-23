@@ -356,7 +356,7 @@ p <- sp::spplot(
       pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
   })
 dev.off()
-png("res/fig/pretic.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+png("res/fig/pretic-dist.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, pretic_dist)
@@ -422,6 +422,43 @@ proc.time() - t0
 tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data)
 save(tooc_pred, file = "data/R/tooc_pred.rda")
 
+# make spatial simulations
+nsim <- 1000
+t0 <- proc.time()
+set.seed(2001)
+tooc_sim <- gstat::krige(
+  formula = C.1 ~ past_landuse, locations = tooc_data, newdata = covar, 
+  model = tooc_lmc$model[[1]], nsim = nsim, nmax = 30, maxdist = tooc_lmc$model[[1]]$range[2], 
+  debug.level = -1)
+proc.time() - t0
+
+# compute tooc limits to classify as a pretic horizon
+tooc_lim <- attributes(tooc_data)[c("lambda", "sv_mean", "sv_sd")]
+tooc_lim <- (car::bcPower(10, tooc_lim$lambda[1]) - tooc_lim$sv_mean[1]) / tooc_lim$sv_sd[1]
+
+# compute the number of simulated values that are larger than the limits
+tooc_ade <- rowSums(apply(tooc_sim@data, 2, function (x) x >= tooc_lim)) / nsim
+tooc_ade <- data.frame(cbind(sp::coordinates(covar), tooc_ade))
+sp::gridded(tooc_ade) <- ~ s1 + s2
+sp::proj4string(tooc_ade) <- sp::proj4string(covar)
+
+# save figure with pretic probability
+p <- sp::spplot(
+  tooc_ade, col.regions = rev(gray.colors(100)), colorkey = TRUE, scales = list(draw = FALSE),
+  panel = function (...) {
+    lattice::panel.grid(h = -1, v = -1)
+    lattice::panel.levelplot(...)
+    lattice::panel.points(
+      pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
+  })
+dev.off()
+png(filename = "res/fig/tooc-pretic.png", width = 480 * 4, height = 480 * 5, res = 72 * 5)
+p
+dev.off()
+save(tooc_ade, file = "data/R/tooc_ade.rda")
+rm(tooc_ade, tooc_sim, tooc_lim, p)
+gc()
+
 # compute stocks
 # load("data/R/tooc_pred.rda")
 tooc_pred@data[, seq(2, 10, 2)] <- 
@@ -468,6 +505,328 @@ png(filename = "res/fig/tooc_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
+
+# CAMG = EXCA + EXMG ----
+sv <- "CAMG"
+camg_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
+# colnames(camg_data@data) <- gsub("camg", "C", colnames(camg_data@data))
+# colnames(camg_data@data) <- gsub("10", "1", colnames(camg_data@data))
+# colnames(camg_data@data) <- gsub("30", "2", colnames(camg_data@data))
+# colnames(camg_data@data) <- gsub("50", "3", colnames(camg_data@data))
+# colnames(camg_data@data) <- gsub("70", "4", colnames(camg_data@data))
+# colnames(camg_data@data) <- gsub("90", "5", colnames(camg_data@data))
+sv <- "CAMG"
+
+# fit competing cross-variogram models
+camg_vario <- compute_sample_variogram(soil_data = camg_data, sv = sv, cross = TRUE)
+plot(camg_vario$v, scales = list(relation = "same"), pch = 20, cex = 0.5)
+camg_cross <- parallel::mclapply(1:length(range), function (i)
+  gstat::gstat(
+    camg_vario$g, id = paste(sv, ".", depth[1], sep = ""),
+    model = gstat::vgm(psill = 0.6, model = "Exp", range = range[i], nugget = 0.2), fill.all = TRUE))
+camg_lmc <- parallel::mclapply(1:length(camg_cross), function (i)
+  gstat::fit.lmc(v = camg_vario$v, g = camg_cross[[i]], correct.diagonal = 1.01))
+
+# cross-validation
+camg_cv <- parallel::mclapply(
+  camg_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, all.residuals = TRUE,
+  boundaries = attr(camg_vario$v, "boundaries"), correct.diagonal = 1.01)
+camg_cv <- round(do.call(rbind, lapply(camg_cv, colMeans)), 4)
+apply(abs(camg_cv), 2, which.min)
+apply(abs(camg_cv), 2, which.max)
+camg_cv <- camg_cv[3, ]
+camg_lmc <- camg_lmc[[3]]
+plot(camg_vario$v, camg_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
+
+# prepare variogram plot
+# camg_plot <-
+#   plot(camg_vario$v, camg_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, 
+#        col = "black", strip = lattice::strip.custom(bg = "lightgray"),  xlab = "Distance (m)", 
+#        ylab = "Semivariance (-)")
+# tmp <- camg_plot + addGridLines
+# camg_plot <- tmp + latticeExtra::as.layer(camg_plot)
+# dev.off()
+# png("res/fig/camg_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
+# camg_plot
+# dev.off()
+
+# save results
+# save(camg_vario, camg_lmc, file = "data/R/camg_vario.rda")
+# load("data/R/camg_vario.rda")
+
+# make spatial predictions
+# t0 <- proc.time()
+# camg_pred <- predict(object = camg_lmc, newdata = covar)
+# proc.time() - t0
+# camg_pred <- back_transform(pred = camg_pred, soil_data = camg_data)
+# save(camg_pred, file = "data/R/camg_pred.rda")
+
+# make spatial simulations
+nsim <- 1000
+t0 <- proc.time()
+set.seed(2001)
+camg_sim <- gstat::krige(
+  formula = CAMG.10 ~ past_landuse, locations = camg_data, newdata = covar, 
+  model = camg_lmc$model[[1]], nsim = nsim, nmax = 30, maxdist = camg_lmc$model[[1]]$range[2], 
+  debug.level = -1)
+proc.time() - t0
+
+# compute camg limits to classify as a pretic horizon
+camg_lim <- attributes(camg_data)[c("lambda", "sv_mean", "sv_sd")]
+camg_lim <- (car::bcPower(2, camg_lim$lambda[1]) - camg_lim$sv_mean[1]) / camg_lim$sv_sd[1]
+
+# compute the number of simulated values that are larger than the limits
+camg_ade <- rowSums(apply(camg_sim@data, 2, function (x) x >= camg_lim)) / nsim
+rm(camg_sim); gc()
+camg_ade <- data.frame(cbind(sp::coordinates(covar), camg_ade))
+sp::gridded(camg_ade) <- ~ s1 + s2
+sp::proj4string(camg_ade) <- sp::proj4string(covar)
+
+# save figure with pretic probability
+p <- sp::spplot(
+  camg_ade, col.regions = rev(gray.colors(100)), colorkey = TRUE, scales = list(draw = FALSE),
+  panel = function (...) {
+    lattice::panel.grid(h = -1, v = -1)
+    lattice::panel.levelplot(...)
+    lattice::panel.points(
+      pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
+  })
+dev.off()
+png(filename = "res/fig/camg-pretic.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
+p
+dev.off()
+save(camg_ade, file = "data/R/camg_ade.rda")
+rm(camg_ade, camg_lim, p)
+gc()
+
+# # compute stocks
+# # load("data/R/camg_pred.rda")
+# camg_pred@data[, seq(2, 10, 2)] <- 
+#   lapply(1:5, function (i) {
+#     0.2 * sqrt(bude$mean[i]^2 * camg_pred@data[, seq(2, 10, 2)][, i]^2 + 
+#                  camg_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2)
+#   })
+# camg_pred@data[, seq(1, 9, 2)] <- 
+#   lapply(1:5, function (i) camg_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
+# # camg_pred@data[, seq(2, 10, 2)] <- camg_pred@data[, seq(2, 10, 2)] / camg_pred@data[, seq(1, 9, 2)]
+# camg_pred@data$stock <- rowSums(camg_pred@data[, seq(1, 9, 2)])
+# camg_pred@data$stock_var <- sqrt(rowSums(camg_pred@data[, seq(2, 10, 2)]^2))
+# totals(camg_pred)
+# range(camg_pred$stock, na.rm = TRUE)
+
+# # save figure with depth-wise predictions
+# map <- layer_predictions(camg_pred, "pred")
+# dev.off()
+# png(filename = "res/fig/camg_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+# map
+# dev.off()
+# rm(map)
+
+# # save figure with depth-wise prediction error standard deviation
+# map <- layer_predictions(camg_pred, "var")
+# dev.off()
+# png(filename = "res/fig/camg_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+# map
+# dev.off()
+# rm(map)
+
+# # save figure with profile predictions
+# map <- profile_predictions(camg_pred, "stock")
+# dev.off()
+# png(filename = "res/fig/camg_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+# map
+# dev.off()
+# rm(map)
+
+# # save figure with profile prediction error standard deviation
+# map <- profile_predictions(camg_pred, "stock_var", col.regions = uncertainty.colors)
+# dev.off()
+# png(filename = "res/fig/camg_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+# map
+# dev.off()
+# rm(map)
+
+# Extratable phosphorus ----
+sv <- "EXPH"
+exph_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
+# colnames(exph_data@data) <- gsub("exph", "C", colnames(exph_data@data))
+# colnames(exph_data@data) <- gsub("10", "1", colnames(exph_data@data))
+# colnames(exph_data@data) <- gsub("30", "2", colnames(exph_data@data))
+# colnames(exph_data@data) <- gsub("50", "3", colnames(exph_data@data))
+# colnames(exph_data@data) <- gsub("70", "4", colnames(exph_data@data))
+# colnames(exph_data@data) <- gsub("90", "5", colnames(exph_data@data))
+sv <- "exph"
+
+# fit competing cross-variogram models
+exph_vario <- compute_sample_variogram(soil_data = exph_data, sv = sv, cross = TRUE)
+plot(exph_vario$v, scales = list(relation = "same"), pch = 20, cex = 0.5)
+exph_cross <- parallel::mclapply(1:length(range), function (i)
+  gstat::gstat(
+    exph_vario$g, id = paste(sv, ".", depth[1], sep = ""),
+    model = gstat::vgm(psill = 0.6, model = "Exp", range = range[i], nugget = 0.2), fill.all = TRUE))
+exph_lmc <- parallel::mclapply(1:length(exph_cross), function (i)
+  gstat::fit.lmc(v = exph_vario$v, g = exph_cross[[i]], correct.diagonal = 1.01))
+
+# cross-validation
+exph_cv <- parallel::mclapply(
+  exph_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, all.residuals = TRUE,
+  boundaries = attr(exph_vario$v, "boundaries"), correct.diagonal = 1.01)
+exph_cv <- round(do.call(rbind, lapply(exph_cv, colMeans)), 4)
+apply(abs(exph_cv), 2, which.min)
+apply(abs(exph_cv), 2, which.max)
+exph_cv <- exph_cv[1, ]
+exph_lmc <- exph_lmc[[1]]
+plot(exph_vario$v, exph_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5)
+
+# prepare variogram plot
+# exph_plot <-
+#   plot(exph_vario$v, exph_lmc, scales = list(relation = "same"), pch = 20, cex = 0.5, 
+#        col = "black", strip = lattice::strip.custom(bg = "lightgray"),  xlab = "Distance (m)", 
+#        ylab = "Semivariance (-)")
+# tmp <- exph_plot + addGridLines
+# exph_plot <- tmp + latticeExtra::as.layer(exph_plot)
+# dev.off()
+# png("res/fig/exph_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
+# exph_plot
+# dev.off()
+
+# save results
+# save(exph_vario, exph_lmc, file = "data/R/exph_vario.rda")
+# load("data/R/exph_vario.rda")
+
+# make spatial predictions
+# t0 <- proc.time()
+# exph_pred <- predict(object = exph_lmc, newdata = covar)
+# proc.time() - t0
+# exph_pred <- back_transform(pred = exph_pred, soil_data = exph_data)
+# save(exph_pred, file = "data/R/exph_pred.rda")
+
+# make spatial simulations
+nsim <- 1000
+t0 <- proc.time()
+set.seed(2001)
+exph_sim <- gstat::krige(
+  formula = EXPH.10 ~ past_landuse, locations = exph_data, newdata = covar, 
+  model = exph_lmc$model[[1]], nsim = nsim, nmax = 30, maxdist = exph_lmc$model[[1]]$range[2], 
+  debug.level = -1)
+proc.time() - t0
+
+# compute exph limits to classify as a pretic horizon
+# set limit accordingly!!!
+exph_lim <- attributes(exph_data)[c("lambda", "sv_mean", "sv_sd")]
+exph_lim <- (car::bcPower(30, exph_lim$lambda[1]) - exph_lim$sv_mean[1]) / exph_lim$sv_sd[1]
+
+# compute the number of simulated values that are larger than the limits
+exph_ade <- rowSums(apply(exph_sim@data, 2, function (x) x >= exph_lim)) / nsim
+rm(exph_sim); gc()
+exph_ade <- data.frame(cbind(sp::coordinates(covar), exph_ade))
+sp::gridded(exph_ade) <- ~ s1 + s2
+sp::proj4string(exph_ade) <- sp::proj4string(covar)
+
+# save figure with pretic probability
+p <- sp::spplot(
+  exph_ade, col.regions = rev(gray.colors(100)), colorkey = TRUE, scales = list(draw = FALSE),
+  panel = function (...) {
+    lattice::panel.grid(h = -1, v = -1)
+    lattice::panel.levelplot(...)
+    lattice::panel.points(
+      pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
+  })
+dev.off()
+png(filename = "res/fig/exph-pretic.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
+p
+dev.off()
+save(exph_ade, file = "data/R/exph_ade.rda")
+rm(exph_ade, exph_lim, p)
+gc()
+
+# # compute stocks
+# # load("data/R/exph_pred.rda")
+# exph_pred@data[, seq(2, 10, 2)] <- 
+#   lapply(1:5, function (i) {
+#     0.2 * sqrt(bude$mean[i]^2 * exph_pred@data[, seq(2, 10, 2)][, i]^2 + 
+#                  exph_pred@data[, seq(1, 9, 2)][, i]^2 * bude$sd[i]^2)
+#   })
+# exph_pred@data[, seq(1, 9, 2)] <- 
+#   lapply(1:5, function (i) exph_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
+# # exph_pred@data[, seq(2, 10, 2)] <- exph_pred@data[, seq(2, 10, 2)] / exph_pred@data[, seq(1, 9, 2)]
+# exph_pred@data$stock <- rowSums(exph_pred@data[, seq(1, 9, 2)])
+# exph_pred@data$stock_var <- sqrt(rowSums(exph_pred@data[, seq(2, 10, 2)]^2))
+# totals(exph_pred)
+# range(exph_pred$stock, na.rm = TRUE)
+
+# # save figure with depth-wise predictions
+# map <- layer_predictions(exph_pred, "pred")
+# dev.off()
+# png(filename = "res/fig/exph_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+# map
+# dev.off()
+# rm(map)
+
+# # save figure with depth-wise prediction error standard deviation
+# map <- layer_predictions(exph_pred, "var")
+# dev.off()
+# png(filename = "res/fig/exph_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+# map
+# dev.off()
+# rm(map)
+
+# # save figure with profile predictions
+# map <- profile_predictions(exph_pred, "stock")
+# dev.off()
+# png(filename = "res/fig/exph_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+# map
+# dev.off()
+# rm(map)
+
+# # save figure with profile prediction error standard deviation
+# map <- profile_predictions(exph_pred, "stock_var", col.regions = uncertainty.colors)
+# dev.off()
+# png(filename = "res/fig/exph_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+# map
+# dev.off()
+# rm(map)
+
+# PRETIC ----
+
+# process data
+load("data/R/tooc_ade.rda")
+load("data/R/camg_ade.rda")
+load("data/R/exph_ade.rda")
+pretic <- raster::brick(list(raster::raster(tooc_ade), raster::raster(camg_ade), raster::raster(exph_ade)))
+pretic <- min(pretic)
+pretic <- as(pretic, "SpatialPixelsDataFrame")
+rm(tooc_ade, camg_ade, exph_ade)
+gc()
+pretic$pretic <- as.factor(ifelse(pretic$layer >= 0.50, "Pretic", "Adjacent"))
+
+# prepa figure
+min <- apply(pretic@coords, 2, min)
+pretic@coords[, 1] <- pretic@coords[, 1] - min[1]
+pretic@coords[, 2] <- pretic@coords[, 2] - min[2]
+pretic@bbox <- sp::bbox(pretic@coords)
+pts <- pointData@coords[seq(1, nrow(pointData), 5), ]
+pts[, 1] <- pts[, 1] - min[1]
+pts[, 2] <- pts[, 2] - min[2]
+p <- sp::spplot(
+  pretic, 1, col.regions = gray.colors(100, start = 1, end = 0), colorkey = TRUE, scales = list(draw = TRUE),
+  xlab = "Easting (m)", ylab = "Northing (m)",
+  panel = function (...) {
+    lattice::panel.grid(h = -1, v = -1)
+    lattice::panel.levelplot(...)
+    lattice::panel.points(pts, pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
+    lattice::panel.text(x = c(208, 262), y = c(350, 250), labels = "0.5", cex = 0.75)
+  }) + 
+  latticeExtra::as.layer(lattice::contourplot(
+    layer ~ x + y, as.data.frame(pretic), at = 0.5, col = "black", labels = FALSE))
+dev.off()
+png(filename = "res/fig/pretic-prob.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
+p
+dev.off()
+rm(p, pts)
+gc()
+
+# 
 
 # TOTAL CALCIUM ----
 sv <- "TOCA"
@@ -675,4 +1034,4 @@ map
 dev.off()
 rm(map)
 
-plot(exp(-seq(0, 1, 0.1) / 0.2))
+
