@@ -799,6 +799,7 @@ pretic <- as(pretic, "SpatialPixelsDataFrame")
 rm(tooc_ade, camg_ade, exph_ade)
 gc()
 pretic$pretic <- as.factor(ifelse(pretic$layer >= 0.50, "Pretic", "Adjacent"))
+summary(pretic$pretic)
 
 # prepare figure
 min <- apply(pretic@coords, 2, min)
