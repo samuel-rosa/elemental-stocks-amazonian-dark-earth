@@ -291,3 +291,14 @@ slope <-
   function (lmc) {
     sapply(lmc$model, function (x) sum(x$psill) / (0.333 * x$range[2]))
   }
+# Compute statistics for areas of pretic and non-pretic horizon
+pretic_stats <-
+  function (pretic, pred) {
+    pretic <- as(pretic, "SpatialGridDataFrame")
+    data.frame(
+      soma = by(pred$stock, pretic$pretic, sum, na.rm = TRUE) %>% c,
+      media = by(pred$stock, pretic$pretic, mean, na.rm = TRUE) %>% c,
+      minimo = by(pred$stock, pretic$pretic, function (x) min(x, na.rm = TRUE)) %>% c,
+      maximo = by(pred$stock, pretic$pretic, function (x) max(x, na.rm = TRUE)) %>% c
+    )
+  }

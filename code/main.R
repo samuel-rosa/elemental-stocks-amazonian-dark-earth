@@ -834,11 +834,8 @@ dev.off()
 rm(p, pts)
 gc()
 
-# 
-pretic <- as(pretic, "SpatialGridDataFrame")
-by(tooc_pred$stock, pretic$pretic, sum, na.rm = TRUE)
-by(tooc_pred$stock, pretic$pretic, mean, na.rm = TRUE)
-by(tooc_pred$stock, pretic$pretic, function (x) range(x))
+# Stats for carbon stocks
+pretic_stats(pretic, tooc_pred)
 
 # TOTAL CALCIUM ----
 sv <- "TOCA"
@@ -910,9 +907,8 @@ sum(toca_pred$stock, na.rm = TRUE)
 mean(toca_pred$stock, na.rm = TRUE)
 range(toca_pred$stock, na.rm = TRUE)
 
-by(toca_pred$stock, pretic$pretic, sum, na.rm = TRUE)
-by(toca_pred$stock, pretic$pretic, mean, na.rm = TRUE)
-by(toca_pred$stock, pretic$pretic, function (x) range(x))
+# Stats for stocks
+pretic_stats(pretic, toca_pred)
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toca_pred, "pred")
@@ -1000,7 +996,6 @@ toph_pred <- predict(object = toph_lmc, newdata = covar)
 proc.time() - t0
 toph_pred <- back_transform(pred = toph_pred, soil_data = toph_data)
 save(toph_pred, file = "data/R/toph_pred.rda")
-# load("data/R/toph_pred.rda")
 
 # compute stocks
 # load("data/R/toph_pred.rda")
@@ -1018,9 +1013,8 @@ sum(toph_pred$stock, na.rm = TRUE)
 mean(toph_pred$stock, na.rm = TRUE)
 range(toph_pred$stock, na.rm = TRUE)
 
-by(toph_pred$stock, pretic$pretic, sum, na.rm = TRUE)
-by(toph_pred$stock, pretic$pretic, mean, na.rm = TRUE)
-by(toph_pred$stock, pretic$pretic, function (x) range(x))
+# Stats for stocks
+pretic_stats(pretic, toph_pred)
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toph_pred, "pred")
