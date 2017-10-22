@@ -798,7 +798,8 @@ pretic <- min(pretic)
 pretic <- as(pretic, "SpatialPixelsDataFrame")
 rm(tooc_ade, camg_ade, exph_ade)
 gc()
-pretic$pretic <- as.factor(ifelse(pretic$layer >= 0.50, "Pretic", "Adjacent"))
+p <- 0.9
+pretic$pretic <- as.factor(ifelse(pretic$layer >= p, "Pretic", "Adjacent"))
 summary(pretic$pretic)
 
 # prepare figure
@@ -809,17 +810,23 @@ pretic@bbox <- sp::bbox(pretic@coords)
 pts <- pointData@coords[seq(1, nrow(pointData), 5), ]
 pts[, 1] <- pts[, 1] - min[1]
 pts[, 2] <- pts[, 2] - min[2]
+at <- seq(0, 1, by = 0.1)
+col <- gray.colors(length(at) - 1, start = 1, end = 0)
 p <- sp::spplot(
-  pretic, 1, col.regions = gray.colors(100, start = 1, end = 0), colorkey = TRUE, scales = list(draw = TRUE),
+  pretic, 1, at = at, col.regions = col, colorkey = TRUE, scales = list(draw = TRUE), 
   xlab = "Easting (m)", ylab = "Northing (m)",
   panel = function (...) {
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
-    lattice::panel.points(pts, pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
-    lattice::panel.text(x = c(208, 262), y = c(350, 250), labels = "0.5", cex = 0.75)
   }) + 
-  latticeExtra::as.layer(lattice::contourplot(
-    layer ~ x + y, as.data.frame(pretic), at = 0.5, col = "black", labels = FALSE))
+  # latticeExtra::as.layer(lattice::contourplot(
+    # layer ~ x + y, as.data.frame(pretic), at = c(0.25, 0.50, 0.75), col = "black", labels = FALSE)) +
+  # latticeExtra::layer(
+    # lattice::panel.text(x = c(208, 262), y = c(350, 250), labels = "0.50", cex = 0.75)) +
+  latticeExtra::layer(
+    lattice::panel.points(pts, pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5))
+
+# save figure
 dev.off()
 png(filename = "res/fig/pretic-prob.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
 p
