@@ -2,7 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
-res
+#res
 data/GRASS
 data/R
 doc
