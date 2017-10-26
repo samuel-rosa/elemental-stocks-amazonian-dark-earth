@@ -292,13 +292,25 @@ slope <-
     sapply(lmc$model, function (x) sum(x$psill) / (0.333 * x$range[2]))
   }
 # Compute statistics for areas of pretic and non-pretic horizon
+# pretic_stats <-
+#   function (pretic, pred) {
+#     pretic <- as(pretic, "SpatialGridDataFrame")
+#     pred@data %>%
+#     select(seq(1, 9, 2), stock) %>%
+#     data.frame(
+#       soma = by(.data, pretic$pretic, sum, na.rm = TRUE) %>% c,
+#       media = by(.data, pretic$pretic, mean, na.rm = TRUE) %>% c,
+#       minimo = by(.data, pretic$pretic, function (x) min(x, na.rm = TRUE)) %>% c,
+#       maximo = by(.data, pretic$pretic, function (x) max(x, na.rm = TRUE)) %>% c
+#     )
+#   }
 pretic_stats <-
   function (pretic, pred) {
-    pretic <- as(pretic, "SpatialGridDataFrame")
-    data.frame(
-      soma = by(pred$stock, pretic$pretic, sum, na.rm = TRUE) %>% c,
-      media = by(pred$stock, pretic$pretic, mean, na.rm = TRUE) %>% c,
-      minimo = by(pred$stock, pretic$pretic, function (x) min(x, na.rm = TRUE)) %>% c,
-      maximo = by(pred$stock, pretic$pretic, function (x) max(x, na.rm = TRUE)) %>% c
-    )
+    as(pred, "SpatialPixelsDataFrame") %>% 
+      as.data.frame() %>% 
+      select(seq(1, 9, 2), stock) %>%
+      cbind(pretic = pretic$pretic) %>% 
+      group_by(pretic) %>% 
+      summarise_all(funs(sum, mean, min, max)) %>% 
+      t()
   }

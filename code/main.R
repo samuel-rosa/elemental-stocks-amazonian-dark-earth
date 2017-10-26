@@ -6,6 +6,8 @@
 # Clean up and load user defined functions
 rm(list = ls())
 source("code/helper.R")
+library(magrittr)
+library(dplyr)
 
 # Start GRASS
 spgrass7::initGRASS(
@@ -470,9 +472,9 @@ tooc_pred@data[, seq(1, 9, 2)] <-
   lapply(1:5, function (i) tooc_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
 tooc_pred@data$stock <- rowSums(tooc_pred@data[, seq(1, 9, 2)])
 tooc_pred@data$stock_var <- sqrt(rowSums(tooc_pred@data[, seq(2, 10, 2)] ^ 2))
-sum(tooc_pred$stock, na.rm = TRUE)
-mean(tooc_pred$stock, na.rm = TRUE)
-range(tooc_pred$stock, na.rm = TRUE)
+# sum(tooc_pred$stock, na.rm = TRUE)
+# mean(tooc_pred$stock, na.rm = TRUE)
+# range(tooc_pred$stock, na.rm = TRUE)
 
 # save figure with depth-wise predictions
 map <- layer_predictions(tooc_pred, "pred")
@@ -835,7 +837,7 @@ rm(p, pts)
 gc()
 
 # Stats for carbon stocks
-pretic_stats(pretic, tooc_pred)
+write.csv(pretic_stats(pretic, tooc_pred), file = 'res/tab/stock-stats-tooc.csv')
 
 # TOTAL CALCIUM ----
 sv <- "TOCA"
@@ -902,13 +904,12 @@ toca_pred@data[, seq(1, 9, 2)] <-
   lapply(1:5, function (i) toca_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
 toca_pred@data$stock <- rowSums(toca_pred@data[, seq(1, 9, 2)])
 toca_pred@data$stock_var <- sqrt(rowSums(toca_pred@data[, seq(2, 10, 2)] ^ 2))
+# sum(toca_pred$stock, na.rm = TRUE)
+# mean(toca_pred$stock, na.rm = TRUE)
+# range(toca_pred$stock, na.rm = TRUE)
 
-sum(toca_pred$stock, na.rm = TRUE)
-mean(toca_pred$stock, na.rm = TRUE)
-range(toca_pred$stock, na.rm = TRUE)
-
-# Stats for stocks
-pretic_stats(pretic, toca_pred)
+# Stats for calcium stocks
+write.csv(pretic_stats(pretic, toca_pred), file = 'res/tab/stock-stats-toca.csv')
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toca_pred, "pred")
@@ -1008,13 +1009,12 @@ toph_pred@data[, seq(1, 9, 2)] <-
   lapply(1:5, function (i) toph_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
 toph_pred@data$stock <- rowSums(toph_pred@data[, seq(1, 9, 2)])
 toph_pred@data$stock_var <- sqrt(rowSums(toph_pred@data[, seq(2, 10, 2)]^2))
+# sum(toph_pred$stock, na.rm = TRUE)
+# mean(toph_pred$stock, na.rm = TRUE)
+# range(toph_pred$stock, na.rm = TRUE)
 
-sum(toph_pred$stock, na.rm = TRUE)
-mean(toph_pred$stock, na.rm = TRUE)
-range(toph_pred$stock, na.rm = TRUE)
-
-# Stats for stocks
-pretic_stats(pretic, toph_pred)
+# Stats for phosphorus stocks
+write.csv(pretic_stats(pretic, toph_pred), file = 'res/tab/stock-stats-toph.csv')
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toph_pred, "pred")
