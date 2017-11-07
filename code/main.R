@@ -8,6 +8,7 @@ rm(list = ls())
 source("code/helper.R")
 library(magrittr)
 library(dplyr)
+library(splines)
 
 # Start GRASS
 spgrass7::initGRASS(
@@ -68,13 +69,20 @@ range(d)
 # suggest that there is an increase in the asymmetry of the data with depth. This means that the data requires
 # transformation before modelling. We choose the Box-Cox family of power transformations to make the data 
 # empirical distribution closer to the normal. A specific Box-Cox transform is used for each depth.
+# factor.levels <- 
+  # c(expression(paste('Clay (g ',kg^-1,')', sep = '')),
+    # expression(paste('CEC (', cmol[c], " ", kg^-1,')', sep = '')),
+    # "pH",
+    # expression(paste('Ca (g ',kg^-1,')', sep = '')),
+    # expression(paste('C (g ',kg^-1,')', sep = '')),
+    # expression(paste('P (g ',kg^-1,')', sep = '')))
 factor.levels <- 
-  c(expression(paste('Clay (g ',kg^-1,')', sep = '')),
-    expression(paste('CEC (', cmol[c], " ", kg^-1,')', sep = '')),
-    "pH",
+  c(expression(paste('C (g ',kg^-1,')', sep = '')),
     expression(paste('Ca (g ',kg^-1,')', sep = '')),
-    expression(paste('C (g ',kg^-1,')', sep = '')),
-    expression(paste('P (g ',kg^-1,')', sep = '')))
+    expression(paste('P (g ',kg^-1,')', sep = '')),
+    "pH",
+    expression(paste('Clay (g ',kg^-1,')', sep = '')),
+    expression(paste('CEC (', cmol[c], " ", kg^-1,')', sep = '')))
 p <- depth_bwplot(
   pts = pointData, vars = c("TOOC", "TOCA", "TOPH", "PH", "CLAY", "ECEC"), layout = c(3, 2),
   strip = lattice::strip.custom(bg = "lightgray", factor.levels = factor.levels))
@@ -109,53 +117,50 @@ df <- 1:6
 #   caret::train(BUDE ~ splines::ns(depth, df = i), data = density, method = "lm",
 #                trControl = caret::trainControl(method = "LOOCV")))
 fit_bude <- list()
-fit_bude[[1]] <- caret::train(BUDE ~ splines::ns(depth, df = 1), data = density, method = "lm",
-                            trControl = caret::trainControl(method = "LOOCV"))
-fit_bude[[2]] <- caret::train(BUDE ~ splines::ns(depth, df = 2), data = density, method = "lm",
-                              trControl = caret::trainControl(method = "LOOCV"))
-fit_bude[[3]] <- caret::train(BUDE ~ splines::ns(depth, df = 3), data = density, method = "lm",
-                              trControl = caret::trainControl(method = "LOOCV"))
-fit_bude[[4]] <- caret::train(BUDE ~ splines::ns(depth, df = 4), data = density, method = "lm",
-                              trControl = caret::trainControl(method = "LOOCV"))
-fit_bude[[5]] <- caret::train(BUDE ~ splines::ns(depth, df = 5), data = density, method = "lm",
-                              trControl = caret::trainControl(method = "LOOCV"))
-fit_bude[[6]] <- caret::train(BUDE ~ splines::ns(depth, df = 6), data = density, method = "lm",
-                              trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[1]] <- caret::train(
+  BUDE ~ ns(depth, df = 1), data = density, method = "lm", trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[2]] <- caret::train(
+  BUDE ~ ns(depth, df = 2), data = density, method = "lm", trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[3]] <- caret::train(
+  BUDE ~ ns(depth, df = 3), data = density, method = "lm", trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[4]] <- caret::train(
+  BUDE ~ ns(depth, df = 4), data = density, method = "lm", trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[5]] <- caret::train(
+  BUDE ~ ns(depth, df = 5), data = density, method = "lm", trControl = caret::trainControl(method = "LOOCV"))
+fit_bude[[6]] <- caret::train(
+  BUDE ~ ns(depth, df = 6), data = density, method = "lm", trControl = caret::trainControl(method = "LOOCV"))
 cv <- sapply(fit_bude, function (x) x$results)
 c(which.min(cv["RMSE", ]), which.max(cv["Rsquared", ]))
-fit_bude <- lm(BUDE ~ splines::ns(depth, df = 5), density)
-# splines::ns(density$depth, df = 5)
+fit_bude <- lm(BUDE ~ ns(depth, df = 5), density)
+ns(density$depth, df = 5)
 
 # Make predictions
-newdata <- data.frame(depth = seq(0, max(density$depth), 1))
-pred_bude <- predict(fit_bude, newdata = newdata, se.fit = TRUE, interval = "prediction", level = 0.90)
-pred_bude2 <- predict(fit_bude, newdata = newdata, se.fit = TRUE, interval = "confidence", level = 0.90)
+nd <- data.frame(depth = seq(0, max(density$depth), 1))
+pred_bude <- predict(fit_bude, newdata = nd, se.fit = TRUE, interval = "prediction", level = 0.90)
+pred_bude2 <- predict(fit_bude, newdata = nd, se.fit = TRUE, interval = "confidence", level = 0.90)
 
 # Prepare figure with BUDE predictions, confidence interval and prediction interval
 p <- 
   lattice::xyplot(
-    newdata$d ~ pred_bude$fit[, 1], type = "l", col = "black",
+    nd$depth ~ pred_bude$fit[, 1], type = "l", col = "black",
     xlab = expression(paste('Bulk density (Mg ',m^-3,')', sep = '')), ylab = "Depth (cm)",
-    ylim = rev(extendrange(density$depth)),
-    xlim = extendrange(c(density$BUDE, pred_bude$fit[, 2:3])),
-    key = list(corner = c(1, 0.1),
-               points = list(pch = c(20, unique(density$profile))), 
+    ylim = rev(extendrange(density$depth)), xlim = extendrange(c(density$BUDE, pred_bude$fit[, 2:3])),
+    key = list(corner = c(1, 0.1), points = list(pch = c(20, unique(density$profile))), 
                text = list(c("Predictions", paste("Profile", unique(density$profile))))),
     panel = function (...) {
       lattice::panel.grid(v = -1, h = -1)
       lattice::panel.polygon(
-        y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude$fit[, 2], rev(pred_bude$fit[, 3])), 
+        y = c(nd$depth, rev(nd$depth)), x = c(pred_bude$fit[, 2], rev(pred_bude$fit[, 3])), 
         col = "gray90", border = "gray90")
       lattice::panel.polygon(
-        y = c(newdata$depth, rev(newdata$depth)), x = c(pred_bude2$fit[, 2], rev(pred_bude2$fit[, 3])), 
+        y = c(nd$depth, rev(nd$depth)), x = c(pred_bude2$fit[, 2], rev(pred_bude2$fit[, 3])), 
         col = "gray85", border = "gray85")
       lattice::panel.points(density$depth ~ density$BUDE, pch = density$profile, col = "gray25")
       lattice::panel.xyplot(...)
       lattice::panel.abline(
-        h = attr(splines::ns(density$depth, df = 5), "knots"), lty = "dashed", col = "gray75")
+        h = attr(ns(density$depth, df = 5), "knots"), lty = "dashed", col = "gray75")
       lattice::panel.points(
-        newdata$depth[newdata$depth %in% seq(10, 90, 20)] ~ 
-          pred_bude$fit[newdata$depth %in% seq(10, 90, 20), 1], pch = 20, col = "black")
+        nd$depth[seq(10, 90, 20) + 1] ~ pred_bude$fit[seq(10, 90, 20) + 1], pch = 20, col = "black")
     }
   )
 # p$par.settings <- list(fontsize = list(text = 12))
@@ -163,10 +168,11 @@ dev.off()
 png("res/fig/bude.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
-rm(newdata, pred_bude2, pred_bude, p, density)
+rm(nd, pred_bude2, pred_bude, p, density)
 
 # predict BUDE at standard depths and calculate the prediction error variance
-bude <- predict(fit_bude, newdata = data.frame(depth = seq(10, 90, 20)), se.fit = TRUE)
+nd <- data.frame(depth = seq(10, 90, 20))
+bude <- predict(fit_bude, newdata = nd, se.fit = TRUE)
 bude <-  
   data.frame(mean = bude$fit, sd = sqrt(1 + c(bude$se.fit / bude$residual.scale) ^ 2) * bude$residual.scale)
 
@@ -391,8 +397,8 @@ tooc_lmc <- parallel::mclapply(1:length(tooc_cross), function (i)
 
 # cross-validation
 tooc_cv <- parallel::mclapply(
-  tooc_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, all.residuals = TRUE,
-  boundaries = attr(tooc_vario$v, "boundaries"), correct.diagonal = 1.01)
+  tooc_lmc, gstat::gstat.cv, nfold = length(unique(pointData$stake)), remove.all = TRUE, 
+  all.residuals = TRUE, boundaries = attr(tooc_vario$v, "boundaries"), correct.diagonal = 1.01)
 tooc_cv <- round(do.call(rbind, lapply(tooc_cv, colMeans)), 4)
 apply(abs(tooc_cv), 2, which.min)
 apply(abs(tooc_cv), 2, which.max)
