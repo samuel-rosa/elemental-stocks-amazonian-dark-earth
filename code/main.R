@@ -69,13 +69,20 @@ range(d)
 # suggest that there is an increase in the asymmetry of the data with depth. This means that the data requires
 # transformation before modelling. We choose the Box-Cox family of power transformations to make the data 
 # empirical distribution closer to the normal. A specific Box-Cox transform is used for each depth.
+# factor.levels <- 
+  # c(expression(paste('Clay (g ',kg^-1,')', sep = '')),
+    # expression(paste('CEC (', cmol[c], " ", kg^-1,')', sep = '')),
+    # "pH",
+    # expression(paste('Ca (g ',kg^-1,')', sep = '')),
+    # expression(paste('C (g ',kg^-1,')', sep = '')),
+    # expression(paste('P (g ',kg^-1,')', sep = '')))
 factor.levels <- 
-  c(expression(paste('Clay (g ',kg^-1,')', sep = '')),
-    expression(paste('CEC (', cmol[c], " ", kg^-1,')', sep = '')),
-    "pH",
+  c(expression(paste('C (g ',kg^-1,')', sep = '')),
     expression(paste('Ca (g ',kg^-1,')', sep = '')),
-    expression(paste('C (g ',kg^-1,')', sep = '')),
-    expression(paste('P (g ',kg^-1,')', sep = '')))
+    expression(paste('P (g ',kg^-1,')', sep = '')),
+    "pH",
+    expression(paste('Clay (g ',kg^-1,')', sep = '')),
+    expression(paste('CEC (', cmol[c], " ", kg^-1,')', sep = '')))
 p <- depth_bwplot(
   pts = pointData, vars = c("TOOC", "TOCA", "TOPH", "PH", "CLAY", "ECEC"), layout = c(3, 2),
   strip = lattice::strip.custom(bg = "lightgray", factor.levels = factor.levels))
