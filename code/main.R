@@ -469,7 +469,7 @@ gc()
 
 # compute stocks
 # load("data/R/tooc_pred.rda")
-tooc_pred@data[, seq(2, 10, 2)] <- 
+tooc_pred@data[, seq(2, 10, 2)] <-
   lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i] ^ 2 * tooc_pred@data[, seq(2, 10, 2)][, i] ^ 2 + 
                  tooc_pred@data[, seq(1, 9, 2)][, i] ^ 2 * bude$sd[i] ^ 2)
@@ -478,6 +478,13 @@ tooc_pred@data[, seq(1, 9, 2)] <-
   lapply(1:5, function (i) tooc_pred@data[, seq(1, 9, 2)][, i] * bude$mean[i] * 0.2)
 tooc_pred@data$stock <- rowSums(tooc_pred@data[, seq(1, 9, 2)])
 tooc_pred@data$stock_var <- sqrt(rowSums(tooc_pred@data[, seq(2, 10, 2)] ^ 2))
+# idx <- grep(pattern = "^cov.", names(tooc_pred))
+# idx_layer <- gsub("cov.C.", "", names(tooc_pred)[idx])
+# idx_layer <- stringr::str_split(idx_layer, pattern = ".C.")
+# idx_layer <- lapply(idx_layer, as.numeric)
+# dens_const <- sapply(idx_layer, function (i) prod(bude$mean[i] ^ 2) * 0.2)
+# tooc_pred@data[idx] <- mapply(`*`, tooc_pred@data[idx], dens_const)
+# tooc_pred@data$stock_var <- sqrt(rowSums((tooc_pred@data[, seq(2, 10, 2)] ^ 2) + 2 * tooc_pred@data[idx]))
 # sum(tooc_pred$stock, na.rm = TRUE)
 # mean(tooc_pred$stock, na.rm = TRUE)
 # range(tooc_pred$stock, na.rm = TRUE)
@@ -802,7 +809,9 @@ load("data/R/tooc_ade.rda")
 load("data/R/camg_ade.rda")
 load("data/R/exph_ade.rda")
 pretic <- raster::brick(list(raster::raster(tooc_ade), raster::raster(camg_ade), raster::raster(exph_ade)))
-pretic <- min(pretic)
+# sp::spplot(pretic)
+# pretic <- min(pretic)
+pretic <- prod(pretic)
 pretic <- as(pretic, "SpatialPixelsDataFrame")
 rm(tooc_ade, camg_ade, exph_ade)
 gc()
