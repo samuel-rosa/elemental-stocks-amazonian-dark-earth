@@ -3,6 +3,7 @@
 
 # Initial settings ############################################################################################
 
+```{r}
 # Clean up and load user defined functions
 rm(list = ls())
 source("code/helper.R")
@@ -191,18 +192,23 @@ png("res/fig/ceramics.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(p)
+```
 
 # Study area ##################################################################################################
 # Prepare a figure of the study area using Google Earth imagery. The figure must show the study area and 
 # the Solimões River so that the reader can have an idea of the past landscape setting, with the river bed 
 # running very close to the study area.
 
+```{r}
+# Include labels in figures?
+plot_labels <- TRUE
+
 # Get image from Google Maps
 location <- c(-60.24, -3.26, -60.22, -3.253)
 map <- ggmap::get_map(location, maptype = "satellite", color = "bw")
 
 # Prepare polygon data
-boundary <- raster::shapefile("data/QGIS/boundary.shp")
+boundary <- raster::shapefile("../data/QGIS/boundary.shp")
 boundary@data <- data.frame(id = 1)
 boundary <- sp::spTransform(boundary, sp::CRS("+init=epsg:4326"))
 boundary@data$id <- rownames(boundary@data)
@@ -213,25 +219,29 @@ boundary <- ggplot2::fortify(boundary, region = "id")
 # Prepare image
 p <- 
   ggmap::ggmap(map) + 
-  # ggplot2::xlab("Longitude (°)") +
-  # ggplot2::ylab("Latitude (°)") +
   ggplot2::xlab("") +
   ggplot2::ylab("") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black", size = 15),
-                 axis.text.y = ggplot2::element_text(color = "black", size = 15),
-                 panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(color = "black", size = 15),
+    axis.text.y = ggplot2::element_text(color = "black", size = 15),
+    panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
   ggplot2::geom_polygon(
     ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "white", fill = NA, size = 2) +
   ggplot2::geom_polygon(
-    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.7) +
-  # ggplot2::geom_text(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261), size = 5) +
-  # ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005), size = 5)
-  shadowtext::geom_shadowtext(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261, bg.color = "white"), col = "black", size = 5) +
-  shadowtext::geom_shadowtext(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005, bg.color = "white"), col = "black", size = 5)
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.7)
+if (plot_labels) {
+  p <- p + 
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261, bg.color = "white"), 
+      col = "black", size = 5) +
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005, bg.color = "white"), 
+      col = "black", size = 5)
+}
 
 # Save image
-dev.off()
-png("res/fig/caldeirao.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+ggplot2::ggsave(file = "../res/fig/caldeirao.svg", plot = p, width = 14, height = 14, dpi = 1200)
+png("../res/fig/caldeirao.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, location, map)
@@ -241,26 +251,32 @@ location <- c(-60.76, -3.76, -59.00, -2.50)
 # map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
 center <- c(mean(location[c(1, 3)]), mean(location[c(2, 4)]))
 map <- ggmap::get_googlemap(
-  center = center, maptype = "terrain", color = "bw", style = c(feature = "all", element = "labels", visibility = "off"))
+  center = center, maptype = "terrain", color = "bw", 
+  style = c(feature = "all", element = "labels", visibility = "off"))
 
 # Prepare regional-scale image
 p <- 
   ggmap::ggmap(map) + 
-  # ggplot2::xlab("Longitude (°)") +
-  # ggplot2::ylab("Latitude (°)") +
   ggplot2::xlab("") +
   ggplot2::ylab("") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black", size = 30),
-                 axis.text.y = ggplot2::element_text(color = "black", size = 30),
-                 panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(color = "black", size = 30),
+    axis.text.y = ggplot2::element_text(color = "black", size = 30),
+    panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
   ggplot2::geom_polygon(
-    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  shadowtext::geom_shadowtext(ggplot2::aes(label = "Caldeirão", x = lab[1] + 0.17, y = lab[2], bg.color = "white"), col = "black", size = 10) +
-  shadowtext::geom_shadowtext(ggplot2::aes(label = "Amazonas State", x = lab[1] + 0.5, y = lab[2] - 0.25, bg.color = "white"), col = "black", size = 10)
-
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5)
+if (plot_labels) {
+  p <- p + 
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Caldeirão", x = lab[1] + 0.17, y = lab[2], bg.color = "white"), 
+      col = "black", size = 10) +
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Amazonas State", x = lab[1] + 0.5, y = lab[2] - 0.25, bg.color = "white"), 
+      col = "black", size = 10)
+}
 # Save regional-scale image
-dev.off()
-png("res/fig/manaus.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
+ggplot2::ggsave(file = "../res/fig/manaus.svg", plot = p, width = 7, height = 7, dpi = 1200)
+png("../res/fig/manaus.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 p
 dev.off()
 rm(p, location, map)
@@ -270,28 +286,37 @@ location <- c(-74.5, -34.5, -29.5, 5.5)
 # map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
 center <- c(mean(location[c(1, 3)]), mean(location[c(2, 4)]))
 map <- ggmap::get_googlemap(
-  center = center, maptype = "terrain", color = "bw", zoom = 4, style = c(feature = "all", element = "labels", visibility = "off"))
+  center = center, maptype = "terrain", color = "bw", zoom = 4, 
+  style = c(feature = "all", element = "labels", visibility = "off"))
 
 # Prepare regional-scale image
 p <- 
   ggmap::ggmap(map) + 
   ggplot2::xlab("") +
   ggplot2::ylab("") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black", size = 30),
-                 axis.text.y = ggplot2::element_text(color = "black", size = 30),
-                 panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
-  # ggplot2::geom_polygon(
-    # ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  shadowtext::geom_shadowtext(ggplot2::aes(label = "Amazonas\nState", x = lab[1], y = lab[2], bg.color = "white"), col = "black", size = 10) +
-  shadowtext::geom_shadowtext(ggplot2::aes(label = "BRAZIL", x = center[1], y = center[2], bg.color = "white"), col = "black", size = 10)
-
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(color = "black", size = 30),
+    axis.text.y = ggplot2::element_text(color = "black", size = 30),
+    panel.border = ggplot2::element_rect(size = 2, fill = NA))
+if (plot_labels) {
+  p <- p + 
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Amazonas\nState", x = lab[1], y = lab[2], bg.color = "white"), 
+      col = "black", size = 10) +
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "BRAZIL", x = center[1], y = center[2], bg.color = "white"), 
+      col = "black", size = 10)
+}
 # Save country-scale image
-dev.off()
-png("res/fig/brasil.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
+ggplot2::ggsave(file = "../res/fig/brasil.svg", plot = p, width = 7, height = 7, dpi = 1200)
+png("../res/fig/brasil.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 p
 dev.off()
-rm(p, location, map, lab, boundary)
+rm(p, location, map, lab)
+rm(boundary)
+```
 
+```{r}
 # Deterministic component of spatial variation ################################################################
 # We model the soil spatial variation using depth-wise linear models where the independed variable is the
 # exponential environmental gradient.
@@ -357,8 +382,11 @@ res_anova <- rbind(cbind("tooc",  tooc_anova), cbind("toca", toca_anova), cbind(
 write.csv(res_anova, file = "res/tab/anova.csv")
 
 rm(soil_var, res_anova, tooc_anova, toca_anova, toph_anova)
+```
 
-# Map the pretic criteria #####################################################################################
+# Map the pretic criteria
+
+```{r}
 # This first attempt is based on the use of nearest neighbour distances.
 pretic_dist <- SpatialTools::dist2(sp::coordinates(covar), pointData@coords[pointData$d == 10, ])
 pretic_dist <- apply(pretic_dist, 1, which.min)
@@ -1081,3 +1109,4 @@ png(filename = "res/fig/toph_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
+```
