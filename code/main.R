@@ -9,6 +9,7 @@ source("code/helper.R")
 library(magrittr)
 library(dplyr)
 library(splines)
+library(ggplot2)
 
 # Start GRASS
 spgrass7::initGRASS(
@@ -212,14 +213,21 @@ boundary <- ggplot2::fortify(boundary, region = "id")
 # Prepare image
 p <- 
   ggmap::ggmap(map) + 
-  ggplot2::xlab("Longitude (°)") +
-  ggplot2::ylab("Latitude (°)") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
-                 axis.text.y = ggplot2::element_text(color = "black")) +
+  # ggplot2::xlab("Longitude (°)") +
+  # ggplot2::ylab("Latitude (°)") +
+  ggplot2::xlab("") +
+  ggplot2::ylab("") +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black", size = 15),
+                 axis.text.y = ggplot2::element_text(color = "black", size = 15),
+                 panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
   ggplot2::geom_polygon(
-    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  ggplot2::geom_text(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261), size = 4) +
-  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005), size = 4)
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "white", fill = NA, size = 2) +
+  ggplot2::geom_polygon(
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.7) +
+  # ggplot2::geom_text(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261), size = 5) +
+  # ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005), size = 5)
+  shadowtext::geom_shadowtext(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261, bg.color = "white"), col = "black", size = 5) +
+  shadowtext::geom_shadowtext(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005, bg.color = "white"), col = "black", size = 5)
 
 # Save image
 dev.off()
@@ -230,47 +238,58 @@ rm(p, location, map)
 
 # Get regional-scale image
 location <- c(-60.76, -3.76, -59.00, -2.50)
-map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+# map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+center <- c(mean(location[c(1, 3)]), mean(location[c(2, 4)]))
+map <- ggmap::get_googlemap(
+  center = center, maptype = "terrain", color = "bw", style = c(feature = "all", element = "labels", visibility = "off"))
 
 # Prepare regional-scale image
 p <- 
   ggmap::ggmap(map) + 
-  ggplot2::xlab("Longitude (°)") +
-  ggplot2::ylab("Latitude (°)") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
-                 axis.text.y = ggplot2::element_text(color = "black")) +
+  # ggplot2::xlab("Longitude (°)") +
+  # ggplot2::ylab("Latitude (°)") +
+  ggplot2::xlab("") +
+  ggplot2::ylab("") +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black", size = 30),
+                 axis.text.y = ggplot2::element_text(color = "black", size = 30),
+                 panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
   ggplot2::geom_polygon(
     ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1] - 0.11, y = lab[2] + 0.0005), size = 4)
+  shadowtext::geom_shadowtext(ggplot2::aes(label = "Caldeirão", x = lab[1] + 0.17, y = lab[2], bg.color = "white"), col = "black", size = 10) +
+  shadowtext::geom_shadowtext(ggplot2::aes(label = "Amazonas State", x = lab[1] + 0.5, y = lab[2] - 0.25, bg.color = "white"), col = "black", size = 10)
 
 # Save regional-scale image
 dev.off()
-png("res/fig/manaus.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+png("res/fig/manaus.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 p
 dev.off()
 rm(p, location, map)
 
 # Get country-scale image
 location <- c(-74.5, -34.5, -29.5, 5.5)
-map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+# map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+center <- c(mean(location[c(1, 3)]), mean(location[c(2, 4)]))
+map <- ggmap::get_googlemap(
+  center = center, maptype = "terrain", color = "bw", zoom = 4, style = c(feature = "all", element = "labels", visibility = "off"))
 
 # Prepare regional-scale image
 p <- 
   ggmap::ggmap(map) + 
-  ggplot2::xlab("Longitude (°)") +
-  ggplot2::ylab("Latitude (°)") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
-                 axis.text.y = ggplot2::element_text(color = "black")) +
-  ggplot2::geom_polygon(
-    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1] - 0.09, y = lab[2] + 0.0005), size = 4)
+  ggplot2::xlab("") +
+  ggplot2::ylab("") +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black", size = 30),
+                 axis.text.y = ggplot2::element_text(color = "black", size = 30),
+                 panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
+  # ggplot2::geom_polygon(
+    # ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
+  shadowtext::geom_shadowtext(ggplot2::aes(label = "Amazonas\nState", x = lab[1], y = lab[2], bg.color = "white"), col = "black", size = 10) +
+  shadowtext::geom_shadowtext(ggplot2::aes(label = "BRAZIL", x = center[1], y = center[2], bg.color = "white"), col = "black", size = 10)
 
 # Save country-scale image
 dev.off()
-png("res/fig/brasil.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+png("res/fig/brasil.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 p
 dev.off()
-
 rm(p, location, map, lab, boundary)
 
 # Deterministic component of spatial variation ################################################################
