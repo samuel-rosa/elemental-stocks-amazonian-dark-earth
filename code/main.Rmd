@@ -1,12 +1,14 @@
-# title: Spatial modelling of total carbon, calcium and phosphorus stocks in Amazonian Dark Earths
-# author: Alessandro Samuel-Rosa
+---
+title: "Spatial modelling of total carbon, calcium and phosphorus stocks in Amazonian Dark Earths"
+author: "Alessandro Samuel-Rosa"
+---
 
-# Initial settings ############################################################################################
+# Initial settings
 
 ```{r}
 # Clean up and load user defined functions
 rm(list = ls())
-source("code/helper.R")
+source("../code/helper.R")
 library(magrittr)
 library(dplyr)
 library(splines)
@@ -14,14 +16,18 @@ library(ggplot2)
 
 # Start GRASS
 spgrass7::initGRASS(
-  gisBase = gisBase, gisDbase = "data/GRASS", location = "caldeirao", mapset = "predictions", 
+  gisBase = gisBase, gisDbase = "../data/GRASS", location = "caldeirao", mapset = "predictions", 
   override = TRUE, pid = Sys.getpid())
+```
 
+# Soil data processing
+
+```{r}
 # Load and pre-process point soil data
 # The coordinates of the sample points are given by `d` (depth), `x` (longitude), and `y` (latitude). The 
 # depth `d` of the sample is equal to the center of the sampling layer. The identification of each sample 
 # point is given by the variable `stake`.
-pointData <- read.table("data/soil/caldeirao.csv", sep = ";", header = T)
+pointData <- read.table("../data/soil/caldeirao.csv", sep = ";", header = T)
 head(pointData)
 length(unique(pointData$stake)) # number of unique points (n = 53)
 dim(pointData)
@@ -50,7 +56,7 @@ pointData$pch <- ifelse(pointData$PRETIC == 1, 21, 1)
 pointData$col <- ifelse(pointData$PRETIC == 1, "red", "ivory")
 
 # Save point soil data
-save(pointData, file = "data/R/pointData.rda")
+save(pointData, file = "../data/R/pointData.rda")
 # load("data/R/pointData.rda")
 
 # Check spatial distribution
@@ -90,12 +96,15 @@ p <- depth_bwplot(
   strip = lattice::strip.custom(bg = "lightgray", factor.levels = factor.levels))
 p$index.cond[[1]] <- c(2, 3, 1, 5, 4, 6)
 dev.off()
-png(paste("res/fig/box-and-whisker.png", sep = ""), width = 1200, height = 1200 / 1.6, res = 150)
+png(paste("../res/fig/box-and-whisker.png", sep = ""), width = 1200, height = 1200 / 1.6, res = 150)
 p
 dev.off()
 rm(p)
+```
 
-# Soil bulk density ###########################################################################################
+## Bulk density
+
+```{r}
 # Soil density data is available at three sampling locations, more specificaly at three soil profiles 
 # described in the year of 2011.
 # Bulk density data is in grams per cubic centimetre.
@@ -105,7 +114,7 @@ rm(p)
 # Soil mass data is in megagrams.
 
 # load data
-density <- read.table("data/soil/density.csv", sep = ";", header = TRUE, dec = ",")
+density <- read.table("../data/soil/density.csv", sep = ";", header = TRUE, dec = ",")
 density$BUDE <- round(density$BUDE, 2)
 density <- density[order(density$profile), ]
 head(density)
@@ -166,8 +175,7 @@ p <-
     }
   )
 # p$par.settings <- list(fontsize = list(text = 12))
-dev.off()
-png("res/fig/bude.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
+png("../res/fig/bude.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(nd, pred_bude2, pred_bude, p, density)
@@ -177,8 +185,11 @@ nd <- data.frame(depth = seq(10, 90, 20))
 bude <- predict(fit_bude, newdata = nd, se.fit = TRUE)
 bude <-  
   data.frame(mean = bude$fit, sd = sqrt(1 + c(bude$se.fit / bude$residual.scale) ^ 2) * bude$residual.scale)
+```
 
-# Volume of coarse fragments ##################################################################################
+## Volume of coarse fragments
+
+```{r}
 p <- 
   lattice::histogram(
     pointData$FRAG, xlab = "Volume of ceramics (%)", nint = 50,
@@ -187,17 +198,17 @@ p <-
       lattice::panel.rug(..., col = "gray50")
       lattice::panel.histogram(..., col = "gray85")
     })
-dev.off()
-png("res/fig/ceramics.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
+png("../res/fig/ceramics.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(p)
 ```
 
-# Study area ##################################################################################################
-# Prepare a figure of the study area using Google Earth imagery. The figure must show the study area and 
-# the Solimões River so that the reader can have an idea of the past landscape setting, with the river bed 
-# running very close to the study area.
+# Study area
+
+Prepare a figure of the study area using Google Earth imagery. The figure must show the study area and 
+the Solimões River so that the reader can have an idea of the past landscape setting, with the river bed 
+running very close to the study area.
 
 ```{r}
 # Include labels in figures?
@@ -316,8 +327,11 @@ rm(p, location, map, lab)
 rm(boundary)
 ```
 
+# Fixed effects modelling
+
+## Covariate
+
 ```{r}
-# Deterministic component of spatial variation ################################################################
 # We model the soil spatial variation using depth-wise linear models where the independed variable is the
 # exponential environmental gradient.
 # By fitting depth-wise regression models we already take into account the effect of the depth.
@@ -361,7 +375,11 @@ png("res/fig/covar.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, map, pts)
+```
 
+## Soil variables
+
+```{r}
 # Use exponential
 covar$past_landuse <- exp(covar$past_landuse)
 
@@ -415,13 +433,18 @@ png("res/fig/pretic-dist.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, pretic_dist)
+```
 
-# Stochastic component of spatial variation ###################################################################
+# Mixed effects modelling
 
+```{r}
 depth <- unique(pointData$d)
 range <- c(50, 75, 100)
+```
 
-# TOTAL ORGANIC CARBON ----
+## Total organic carbon
+
+```{r}
 sv <- "TOOC"
 tooc_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 colnames(tooc_data@data) <- gsub("TOOC", "C", colnames(tooc_data@data))
@@ -567,8 +590,11 @@ png(filename = "res/fig/tooc_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
+```
 
-# CAMG = EXCA + EXMG ----
+## Exchangeable calcium and magnesium
+
+```{r}
 sv <- "CAMG"
 camg_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 # colnames(camg_data@data) <- gsub("camg", "C", colnames(camg_data@data))
@@ -707,8 +733,11 @@ gc()
 # map
 # dev.off()
 # rm(map)
+```
 
-# Extratable phosphorus ----
+## Extratable phosphorus
+
+```{r}
 sv <- "EXPH"
 exph_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 # colnames(exph_data@data) <- gsub("exph", "C", colnames(exph_data@data))
@@ -848,9 +877,11 @@ gc()
 # map
 # dev.off()
 # rm(map)
+```
 
-# PRETIC ----
+## Pretic probability
 
+```{r}
 # process data
 load("data/R/tooc_ade.rda")
 load("data/R/camg_ade.rda")
@@ -900,8 +931,11 @@ gc()
 
 # Stats for carbon stocks
 write.csv(pretic_stats(pretic, tooc_pred), file = 'res/tab/stock-stats-tooc.csv')
+```
 
-# TOTAL CALCIUM ----
+## Total calcium
+
+```{r}
 sv <- "TOCA"
 toca_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 colnames(toca_data@data) <- gsub("TOCA", "Ca", colnames(toca_data@data))
@@ -1004,8 +1038,11 @@ png(filename = "res/fig/toca_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
+```
 
-# TOTAL PHOSPHORUS ----
+## Total phosphorus
+
+```{r}
 sv <- "TOPH"
 toph_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 colnames(toph_data@data) <- gsub("TOPH", "P", colnames(toph_data@data))
