@@ -493,15 +493,26 @@ dev.off()
 save(tooc_vario, tooc_lmc, file = "../res/R/tooc_vario.rda")
 ```
 
-### Spatial precition and simulation
+### Spatial prediction
 
 ```{r}
-t0 <- proc.time()
-tooc_pred <- predict(object = tooc_lmc, newdata = covar)
-proc.time() - t0
-tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data)
-save(tooc_pred, file = "../res/R/tooc_pred.rda")
+if (file.exists("../res/R/tooc_pred.rda")) {
+  load("../res/R/tooc_pred.rda")
+} else {
+  t0 <- proc.time()
+  tooc_pred <- predict(object = tooc_lmc, newdata = covar)
+  proc.time() - t0
+  tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data)
+  save(tooc_pred, file = "../res/R/tooc_pred.rda")
+}
+```
 
+### Spatial simulation
+
+```{r}
+if (file.exists("../res/R/tooc_ade.rda")) {
+  load("../res/R/tooc_ade.rda")
+} else {
 # make spatial simulations
 nsim <- 1000
 t0 <- proc.time()
@@ -522,6 +533,12 @@ tooc_ade <- data.frame(cbind(sp::coordinates(covar), tooc_ade))
 sp::gridded(tooc_ade) <- ~ s1 + s2
 sp::proj4string(tooc_ade) <- sp::proj4string(covar)
 
+# save
+save(tooc_ade, file = "../res/R/tooc_ade.rda")
+rm(tooc_sim, tooc_lim)
+gc()
+}
+
 # save figure with pretic probability
 p <- sp::spplot(
   tooc_ade, col.regions = rev(gray.colors(100)), colorkey = TRUE, scales = list(draw = FALSE),
@@ -531,12 +548,10 @@ p <- sp::spplot(
     lattice::panel.points(
       pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
   })
-dev.off()
 png(filename = "../res/fig/tooc-pretic.png", width = 480 * 4, height = 480 * 5, res = 72 * 5)
 p
 dev.off()
-save(tooc_ade, file = "../res/R/tooc_ade.rda")
-rm(tooc_ade, tooc_sim, tooc_lim, p)
+rm(p)
 gc()
 ```
 
@@ -565,7 +580,6 @@ tooc_pred@data$stock_var <- sqrt(rowSums(tooc_pred@data[, seq(2, 10, 2)] ^ 2))
 
 # save figure with depth-wise predictions
 map <- layer_predictions(tooc_pred, "pred")
-dev.off()
 png(filename = "../res/fig/tooc_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
@@ -573,7 +587,6 @@ rm(map)
 
 # save figure with depth-wise prediction error standard deviation
 map <- layer_predictions(tooc_pred, "var")
-dev.off()
 png(filename = "../res/fig/tooc_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
@@ -581,7 +594,6 @@ rm(map)
 
 # save figure with profile predictions
 map <- profile_predictions(tooc_pred, "stock")
-dev.off()
 png(filename = "../res/fig/tooc_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
@@ -589,7 +601,6 @@ rm(map)
 
 # save figure with profile prediction error standard deviation
 map <- profile_predictions(tooc_pred, "stock_var", col.regions = uncertainty.colors)
-dev.off()
 png(filename = "../res/fig/tooc_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
@@ -645,14 +656,25 @@ plot(camg_vario$v, camg_lmc, scales = list(relation = "same"), pch = 20, cex = 0
 # save results
 # save(camg_vario, camg_lmc, file = "../res/R/camg_vario.rda")
 # load("../res/R/camg_vario.rda")
+```
 
+### Spatial prediction
+
+```{r}
 # make spatial predictions
 # t0 <- proc.time()
 # camg_pred <- predict(object = camg_lmc, newdata = covar)
 # proc.time() - t0
 # camg_pred <- back_transform(pred = camg_pred, soil_data = camg_data)
 # save(camg_pred, file = "../res/R/camg_pred.rda")
+```
 
+### Spatial simulation
+
+```{r}
+if (file.exists("../res/R/camg_ade.rda")) {
+  load("../res/R/camg_ade.rda")
+} else {
 # make spatial simulations
 nsim <- 1000
 t0 <- proc.time()
@@ -674,6 +696,12 @@ camg_ade <- data.frame(cbind(sp::coordinates(covar), camg_ade))
 sp::gridded(camg_ade) <- ~ s1 + s2
 sp::proj4string(camg_ade) <- sp::proj4string(covar)
 
+# save
+save(camg_ade, file = "../res/R/camg_ade.rda")
+rm(camg_sim, camg_lim)
+gc()
+}
+
 # save figure with pretic probability
 p <- sp::spplot(
   camg_ade, col.regions = rev(gray.colors(100)), colorkey = TRUE, scales = list(draw = FALSE),
@@ -683,14 +711,16 @@ p <- sp::spplot(
     lattice::panel.points(
       pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
   })
-dev.off()
 png(filename = "../res/fig/camg-pretic.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
 p
 dev.off()
-save(camg_ade, file = "../res/R/camg_ade.rda")
-rm(camg_ade, camg_lim, p)
+rm(p)
 gc()
+```
 
+### Stock
+
+```{r}
 # # compute stocks
 # # load("../res/R/camg_pred.rda")
 # camg_pred@data[, seq(2, 10, 2)] <- 
@@ -788,14 +818,25 @@ plot(exph_vario$v, exph_lmc, scales = list(relation = "same"), pch = 20, cex = 0
 # save results
 # save(exph_vario, exph_lmc, file = "../res/R/exph_vario.rda")
 # load("../res/R/exph_vario.rda")
+```
 
+### Spatial prediction
+
+```{r}
 # make spatial predictions
 # t0 <- proc.time()
 # exph_pred <- predict(object = exph_lmc, newdata = covar)
 # proc.time() - t0
 # exph_pred <- back_transform(pred = exph_pred, soil_data = exph_data)
 # save(exph_pred, file = "../res/R/exph_pred.rda")
+```
 
+### Spatial simulation
+
+```{r}
+if (file.exists("../res/R/exph_ade.rda")) {
+  load("../res/R/exph_ade.rda")
+} else {
 # make spatial simulations
 nsim <- 1000
 t0 <- proc.time()
@@ -818,6 +859,12 @@ exph_ade <- data.frame(cbind(sp::coordinates(covar), exph_ade))
 sp::gridded(exph_ade) <- ~ s1 + s2
 sp::proj4string(exph_ade) <- sp::proj4string(covar)
 
+# Save
+save(exph_ade, file = "../res/R/exph_ade.rda")
+rm(exph_sim, exph_lim)
+gc()
+}
+
 # save figure with pretic probability
 p <- sp::spplot(
   exph_ade, col.regions = rev(gray.colors(100)), colorkey = TRUE, scales = list(draw = FALSE),
@@ -827,14 +874,16 @@ p <- sp::spplot(
     lattice::panel.points(
       pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
   })
-dev.off()
 png(filename = "../res/fig/exph-pretic.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
 p
 dev.off()
-save(exph_ade, file = "../res/R/exph_ade.rda")
-rm(exph_ade, exph_lim, p)
+rm(p)
 gc()
+```
 
+### Stock
+
+```{r}
 # # compute stocks
 # # load("../res/R/exph_pred.rda")
 # exph_pred@data[, seq(2, 10, 2)] <- 
@@ -885,14 +934,6 @@ gc()
 
 ## Pretic probability
 
-### Load data
-
-```{r}
-# load("../res/R/tooc_ade.rda")
-# load("../res/R/camg_ade.rda")
-# load("../res/R/exph_ade.rda")
-```
-
 ### Process data
 
 ```{r}
@@ -906,7 +947,7 @@ rm(tooc_ade, camg_ade, exph_ade)
 gc()
 p <- 0.9
 pretic$pretic <- as.factor(ifelse(pretic$layer >= p, "Pretic", "Adjacent"))
-summary(pretic$pretic)
+write.csv(summary(pretic$pretic), file = "../res/tab/area.csv")
 ```
 
 ### Figure
@@ -940,7 +981,8 @@ rm(p, pts)
 gc()
 
 # Stats for carbon stocks
-write.csv(pretic_stats(pretic, tooc_pred), file = 'res/tab/stock-stats-tooc.csv')
+write.csv(pretic_stats(pretic, tooc_pred), file = '../res/tab/stock-stats-tooc.csv')
+rm(tooc_pred)
 ```
 
 ## Total calcium
@@ -991,16 +1033,27 @@ dev.off()
 
 # save results
 save(toca_vario, toca_lmc, file = "../res/R/toca_vario.rda")
+```
 
+### Spatial prediction
+
+```{r}
+if (file.exists("../res/R/toca_pred.rda")) {
+  load("../res/R/toca_pred.rda")
+} else {
 # make spatial predictions
 t0 <- proc.time()
 toca_pred <- predict(object = toca_lmc, newdata = covar)
 proc.time() - t0
 toca_pred <- back_transform(pred = toca_pred, soil_data = toca_data)
 save(toca_pred, file = "../res/R/toca_pred.rda")
+}
+```
 
+### Stock
+
+```{r}
 # compute stocks
-# load("../res/R/toca_pred.rda")
 toca_pred@data[, seq(2, 10, 2)] <- 
   lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i]^2 * toca_pred@data[, seq(2, 10, 2)][, i]^2 + 
@@ -1015,11 +1068,10 @@ toca_pred@data$stock_var <- sqrt(rowSums(toca_pred@data[, seq(2, 10, 2)] ^ 2))
 # range(toca_pred$stock, na.rm = TRUE)
 
 # Stats for calcium stocks
-write.csv(pretic_stats(pretic, toca_pred), file = 'res/tab/stock-stats-toca.csv')
+write.csv(pretic_stats(pretic, toca_pred), file = '../res/tab/stock-stats-toca.csv')
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toca_pred, "pred")
-dev.off()
 png(filename = "../res/fig/toca_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
@@ -1027,7 +1079,6 @@ rm(map)
 
 # save figure with depth-wise prediction error standard deviation
 map <- layer_predictions(toca_pred, "var")
-dev.off()
 png(filename = "../res/fig/toca_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
@@ -1035,7 +1086,6 @@ rm(map)
 
 # save figure with profile predictions
 map <- profile_predictions(toca_pred, "stock")
-dev.off()
 png(filename = "../res/fig/toca_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
@@ -1043,11 +1093,11 @@ rm(map)
 
 # save figure with profile prediction error standard deviation
 map <- profile_predictions(toca_pred, "stock_var", col.regions = uncertainty.colors)
-dev.off()
 png(filename = "../res/fig/toca_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
+gc()
 ```
 
 ## Total phosphorus
@@ -1098,17 +1148,25 @@ dev.off()
 
 # save results
 save(toph_vario, toph_lmc, file = "../res/R/toph_vario.rda")
-# load("../res/R/toph_vario.rda")
+```
 
+### Spatial predictions
+
+```{r}
+if (file.exists("../res/R/toph_pred.rda")) {
+  load("../res/R/toph_pred.rda")
+} else {
 # make spatial predictions
 t0 <- proc.time()
 toph_pred <- predict(object = toph_lmc, newdata = covar)
 proc.time() - t0
 toph_pred <- back_transform(pred = toph_pred, soil_data = toph_data)
 save(toph_pred, file = "../res/R/toph_pred.rda")
+}
+```
 
+```{r}
 # compute stocks
-# load("../res/R/toph_pred.rda")
 toph_pred@data[, seq(2, 10, 2)] <- 
   lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i]^2 * toph_pred@data[, seq(2, 10, 2)][, i]^2 + 
@@ -1123,11 +1181,10 @@ toph_pred@data$stock_var <- sqrt(rowSums(toph_pred@data[, seq(2, 10, 2)]^2))
 # range(toph_pred$stock, na.rm = TRUE)
 
 # Stats for phosphorus stocks
-write.csv(pretic_stats(pretic, toph_pred), file = 'res/tab/stock-stats-toph.csv')
+write.csv(pretic_stats(pretic, toph_pred), file = '../res/tab/stock-stats-toph.csv')
 
 # save figure with depth-wise predictions
 map <- layer_predictions(toph_pred, "pred")
-dev.off()
 png(filename = "../res/fig/toph_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
@@ -1135,7 +1192,6 @@ rm(map)
 
 # save figure with depth-wise prediction error standard deviation
 map <- layer_predictions(toph_pred, "var")
-dev.off()
 png(filename = "../res/fig/toph_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
@@ -1143,7 +1199,6 @@ rm(map)
 
 # save figure with profile predictions
 map <- profile_predictions(toph_pred, "stock", col.regions = soil.colors)
-dev.off()
 png(filename = "../res/fig/toph_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
@@ -1151,9 +1206,9 @@ rm(map)
 
 # save figure with profile prediction error standard deviation
 map <- profile_predictions(toph_pred, "stock_var", col.regions = uncertainty.colors)
-dev.off()
 png(filename = "../res/fig/toph_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
+gc()
 ```
