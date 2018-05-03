@@ -1,25 +1,33 @@
-# title: Spatial modelling of total carbon, calcium and phosphorus stocks in Amazonian Dark Earths
-# author: Alessandro Samuel-Rosa
+---
+title: "Spatial modelling of total carbon, calcium and phosphorus stocks in Amazonian Dark Earths"
+author: "Alessandro Samuel-Rosa"
+---
 
-# Initial settings ############################################################################################
+# Initial settings
 
+```{r}
 # Clean up and load user defined functions
 rm(list = ls())
-source("code/helper.R")
+source("../code/helper.R")
 library(magrittr)
 library(dplyr)
 library(splines)
+library(ggplot2)
 
 # Start GRASS
 spgrass7::initGRASS(
-  gisBase = gisBase, gisDbase = "data/GRASS", location = "caldeirao", mapset = "predictions", 
+  gisBase = gisBase, gisDbase = "../data/GRASS", location = "caldeirao", mapset = "predictions", 
   override = TRUE, pid = Sys.getpid())
+```
 
+# Soil data processing
+
+```{r}
 # Load and pre-process point soil data
 # The coordinates of the sample points are given by `d` (depth), `x` (longitude), and `y` (latitude). The 
 # depth `d` of the sample is equal to the center of the sampling layer. The identification of each sample 
 # point is given by the variable `stake`.
-pointData <- read.table("data/soil/caldeirao.csv", sep = ";", header = T)
+pointData <- read.table("../data/soil/caldeirao.csv", sep = ";", header = T)
 head(pointData)
 length(unique(pointData$stake)) # number of unique points (n = 53)
 dim(pointData)
@@ -48,7 +56,7 @@ pointData$pch <- ifelse(pointData$PRETIC == 1, 21, 1)
 pointData$col <- ifelse(pointData$PRETIC == 1, "red", "ivory")
 
 # Save point soil data
-save(pointData, file = "data/R/pointData.rda")
+save(pointData, file = "../data/R/pointData.rda")
 # load("data/R/pointData.rda")
 
 # Check spatial distribution
@@ -88,12 +96,15 @@ p <- depth_bwplot(
   strip = lattice::strip.custom(bg = "lightgray", factor.levels = factor.levels))
 p$index.cond[[1]] <- c(2, 3, 1, 5, 4, 6)
 dev.off()
-png(paste("res/fig/box-and-whisker.png", sep = ""), width = 1200, height = 1200 / 1.6, res = 150)
+png(paste("../res/fig/box-and-whisker.png", sep = ""), width = 1200, height = 1200 / 1.6, res = 150)
 p
 dev.off()
 rm(p)
+```
 
-# Soil bulk density ###########################################################################################
+## Bulk density
+
+```{r}
 # Soil density data is available at three sampling locations, more specificaly at three soil profiles 
 # described in the year of 2011.
 # Bulk density data is in grams per cubic centimetre.
@@ -103,7 +114,7 @@ rm(p)
 # Soil mass data is in megagrams.
 
 # load data
-density <- read.table("data/soil/density.csv", sep = ";", header = TRUE, dec = ",")
+density <- read.table("../data/soil/density.csv", sep = ";", header = TRUE, dec = ",")
 density$BUDE <- round(density$BUDE, 2)
 density <- density[order(density$profile), ]
 head(density)
@@ -164,8 +175,7 @@ p <-
     }
   )
 # p$par.settings <- list(fontsize = list(text = 12))
-dev.off()
-png("res/fig/bude.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
+png("../res/fig/bude.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(nd, pred_bude2, pred_bude, p, density)
@@ -175,8 +185,11 @@ nd <- data.frame(depth = seq(10, 90, 20))
 bude <- predict(fit_bude, newdata = nd, se.fit = TRUE)
 bude <-  
   data.frame(mean = bude$fit, sd = sqrt(1 + c(bude$se.fit / bude$residual.scale) ^ 2) * bude$residual.scale)
+```
 
-# Volume of coarse fragments ##################################################################################
+## Volume of coarse fragments
+
+```{r}
 p <- 
   lattice::histogram(
     pointData$FRAG, xlab = "Volume of ceramics (%)", nint = 50,
@@ -185,23 +198,28 @@ p <-
       lattice::panel.rug(..., col = "gray50")
       lattice::panel.histogram(..., col = "gray85")
     })
-dev.off()
-png("res/fig/ceramics.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
+png("../res/fig/ceramics.png", width = 480 * 3, height = 480 * 3, res = 72 * 4)
 p
 dev.off()
 rm(p)
+```
 
-# Study area ##################################################################################################
-# Prepare a figure of the study area using Google Earth imagery. The figure must show the study area and 
-# the Solimões River so that the reader can have an idea of the past landscape setting, with the river bed 
-# running very close to the study area.
+# Study area
+
+Prepare a figure of the study area using Google Earth imagery. The figure must show the study area and 
+the Solimões River so that the reader can have an idea of the past landscape setting, with the river bed 
+running very close to the study area.
+
+```{r}
+# Include labels in figures?
+plot_labels <- TRUE
 
 # Get image from Google Maps
 location <- c(-60.24, -3.26, -60.22, -3.253)
 map <- ggmap::get_map(location, maptype = "satellite", color = "bw")
 
 # Prepare polygon data
-boundary <- raster::shapefile("data/QGIS/boundary.shp")
+boundary <- raster::shapefile("../data/QGIS/boundary.shp")
 boundary@data <- data.frame(id = 1)
 boundary <- sp::spTransform(boundary, sp::CRS("+init=epsg:4326"))
 boundary@data$id <- rownames(boundary@data)
@@ -212,68 +230,108 @@ boundary <- ggplot2::fortify(boundary, region = "id")
 # Prepare image
 p <- 
   ggmap::ggmap(map) + 
-  ggplot2::xlab("Longitude (°)") +
-  ggplot2::ylab("Latitude (°)") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
-                 axis.text.y = ggplot2::element_text(color = "black")) +
+  ggplot2::xlab("") +
+  ggplot2::ylab("") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(color = "black", size = 15),
+    axis.text.y = ggplot2::element_text(color = "black", size = 15),
+    panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
   ggplot2::geom_polygon(
-    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  ggplot2::geom_text(ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261), size = 4) +
-  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005), size = 4)
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "white", fill = NA, size = 2) +
+  ggplot2::geom_polygon(
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.7)
+if (plot_labels) {
+  p <- p + 
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Solimões River", x = -60.233, y = -3.261, bg.color = "white"), 
+      col = "black", size = 5) +
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Caldeirão", x = lab[1], y = lab[2] + 0.0005, bg.color = "white"), 
+      col = "black", size = 5)
+}
 
 # Save image
-dev.off()
-png("res/fig/caldeirao.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+ggplot2::ggsave(file = "../res/fig/caldeirao.svg", plot = p, width = 14, height = 14, dpi = 1200)
+png("../res/fig/caldeirao.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, location, map)
 
 # Get regional-scale image
 location <- c(-60.76, -3.76, -59.00, -2.50)
-map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+# map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+center <- c(mean(location[c(1, 3)]), mean(location[c(2, 4)]))
+map <- ggmap::get_googlemap(
+  center = center, maptype = "terrain", color = "bw", 
+  style = c(feature = "all", element = "labels", visibility = "off"))
 
 # Prepare regional-scale image
 p <- 
   ggmap::ggmap(map) + 
-  ggplot2::xlab("Longitude (°)") +
-  ggplot2::ylab("Latitude (°)") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
-                 axis.text.y = ggplot2::element_text(color = "black")) +
+  ggplot2::xlab("") +
+  ggplot2::ylab("") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(color = "black", size = 30),
+    axis.text.y = ggplot2::element_text(color = "black", size = 30),
+    panel.border = ggplot2::element_rect(size = 2, fill = NA)) +
   ggplot2::geom_polygon(
-    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1] - 0.11, y = lab[2] + 0.0005), size = 4)
-
+    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5)
+if (plot_labels) {
+  p <- p + 
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Caldeirão", x = lab[1] + 0.17, y = lab[2], bg.color = "white"), 
+      col = "black", size = 10) +
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Amazonas State", x = lab[1] + 0.5, y = lab[2] - 0.25, bg.color = "white"), 
+      col = "black", size = 10)
+}
 # Save regional-scale image
-dev.off()
-png("res/fig/manaus.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+ggplot2::ggsave(file = "../res/fig/manaus.svg", plot = p, width = 7, height = 7, dpi = 1200)
+png("../res/fig/manaus.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 p
 dev.off()
 rm(p, location, map)
 
 # Get country-scale image
 location <- c(-74.5, -34.5, -29.5, 5.5)
-map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+# map <- ggmap::get_map(location, maptype = "terrain", color = "bw")
+center <- c(mean(location[c(1, 3)]), mean(location[c(2, 4)]))
+map <- ggmap::get_googlemap(
+  center = center, maptype = "terrain", color = "bw", zoom = 4, 
+  style = c(feature = "all", element = "labels", visibility = "off"))
 
 # Prepare regional-scale image
 p <- 
   ggmap::ggmap(map) + 
-  ggplot2::xlab("Longitude (°)") +
-  ggplot2::ylab("Latitude (°)") +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(color = "black"),
-                 axis.text.y = ggplot2::element_text(color = "black")) +
-  ggplot2::geom_polygon(
-    ggplot2::aes(x = long, y = lat), boundary, show.legend = FALSE, colour = "black", fill = NA, size = 0.5) +
-  ggplot2::geom_text(ggplot2::aes(label = "Caldeirão", x = lab[1] - 0.09, y = lab[2] + 0.0005), size = 4)
-
+  ggplot2::xlab("") +
+  ggplot2::ylab("") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(color = "black", size = 30),
+    axis.text.y = ggplot2::element_text(color = "black", size = 30),
+    panel.border = ggplot2::element_rect(size = 2, fill = NA))
+if (plot_labels) {
+  p <- p + 
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "Amazonas\nState", x = lab[1], y = lab[2], bg.color = "white"), 
+      col = "black", size = 10) +
+    shadowtext::geom_shadowtext(
+      ggplot2::aes(label = "BRAZIL", x = center[1], y = center[2], bg.color = "white"), 
+      col = "black", size = 10)
+}
 # Save country-scale image
-dev.off()
-png("res/fig/brasil.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+ggplot2::ggsave(file = "../res/fig/brasil.svg", plot = p, width = 7, height = 7, dpi = 1200)
+png("../res/fig/brasil.png", width = 480 * 2, height = 480 * 2, res = 72 * 2)
 p
 dev.off()
+rm(p, location, map, lab)
+rm(boundary)
+```
 
-rm(p, location, map, lab, boundary)
+# Fixed effects modelling
 
-# Deterministic component of spatial variation ################################################################
+## Covariate
+
+```{r}
 # We model the soil spatial variation using depth-wise linear models where the independed variable is the
 # exponential environmental gradient.
 # By fitting depth-wise regression models we already take into account the effect of the depth.
@@ -317,7 +375,11 @@ png("res/fig/covar.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, map, pts)
+```
 
+## Soil variables
+
+```{r}
 # Use exponential
 covar$past_landuse <- exp(covar$past_landuse)
 
@@ -338,8 +400,11 @@ res_anova <- rbind(cbind("tooc",  tooc_anova), cbind("toca", toca_anova), cbind(
 write.csv(res_anova, file = "res/tab/anova.csv")
 
 rm(soil_var, res_anova, tooc_anova, toca_anova, toph_anova)
+```
 
-# Map the pretic criteria #####################################################################################
+# Map the pretic criteria
+
+```{r}
 # This first attempt is based on the use of nearest neighbour distances.
 pretic_dist <- SpatialTools::dist2(sp::coordinates(covar), pointData@coords[pointData$d == 10, ])
 pretic_dist <- apply(pretic_dist, 1, which.min)
@@ -368,13 +433,18 @@ png("res/fig/pretic-dist.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, pretic_dist)
+```
 
-# Stochastic component of spatial variation ###################################################################
+# Mixed effects modelling
 
+```{r}
 depth <- unique(pointData$d)
 range <- c(50, 75, 100)
+```
 
-# TOTAL ORGANIC CARBON ----
+## Total organic carbon
+
+```{r}
 sv <- "TOOC"
 tooc_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 colnames(tooc_data@data) <- gsub("TOOC", "C", colnames(tooc_data@data))
@@ -520,8 +590,11 @@ png(filename = "res/fig/tooc_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
+```
 
-# CAMG = EXCA + EXMG ----
+## Exchangeable calcium and magnesium
+
+```{r}
 sv <- "CAMG"
 camg_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 # colnames(camg_data@data) <- gsub("camg", "C", colnames(camg_data@data))
@@ -660,8 +733,11 @@ gc()
 # map
 # dev.off()
 # rm(map)
+```
 
-# Extratable phosphorus ----
+## Extratable phosphorus
+
+```{r}
 sv <- "EXPH"
 exph_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 # colnames(exph_data@data) <- gsub("exph", "C", colnames(exph_data@data))
@@ -801,9 +877,11 @@ gc()
 # map
 # dev.off()
 # rm(map)
+```
 
-# PRETIC ----
+## Pretic probability
 
+```{r}
 # process data
 load("data/R/tooc_ade.rda")
 load("data/R/camg_ade.rda")
@@ -853,8 +931,11 @@ gc()
 
 # Stats for carbon stocks
 write.csv(pretic_stats(pretic, tooc_pred), file = 'res/tab/stock-stats-tooc.csv')
+```
 
-# TOTAL CALCIUM ----
+## Total calcium
+
+```{r}
 sv <- "TOCA"
 toca_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 colnames(toca_data@data) <- gsub("TOCA", "Ca", colnames(toca_data@data))
@@ -957,8 +1038,11 @@ png(filename = "res/fig/toca_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
+```
 
-# TOTAL PHOSPHORUS ----
+## Total phosphorus
+
+```{r}
 sv <- "TOPH"
 toph_data <- prepare_soil_data(pointData = pointData, sv = sv, covar = covar, save4back = TRUE)
 colnames(toph_data@data) <- gsub("TOPH", "P", colnames(toph_data@data))
@@ -1062,3 +1146,4 @@ png(filename = "res/fig/toph_sd_profile.png", width = 480 * 4, height = 480 * 5,
 map
 dev.off()
 rm(map)
+```

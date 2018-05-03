@@ -1,6 +1,9 @@
 # Start OS dependent GRASS GIS ----
 if (.Platform$OS.type == "unix") {
-  gisBase <- "/usr/lib/grass72/"
+  dirs <- list.dirs("/usr/lib", recursive = FALSE)
+  idx <- sapply(dirs, function (x) grepl("/usr/lib/grass[[:digit:]]", x))
+  gisBase <- dirs[idx]
+  # gisBase <- "/usr/lib/grass72/"
 } else {
   gisBase <- "C:/Program Files (x86)/GRASS GIS 7.0.4-1"
 }
