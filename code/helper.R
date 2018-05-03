@@ -3,6 +3,9 @@ if (.Platform$OS.type == "unix") {
   dirs <- list.dirs("/usr/lib", recursive = FALSE)
   idx <- sapply(dirs, function (x) grepl("/usr/lib/grass[[:digit:]]", x))
   gisBase <- dirs[idx]
+  if (length(gisBase) > 1) {
+    gisBase <- gisBase[length(gisBase)]
+  }
   # gisBase <- "/usr/lib/grass72/"
 } else {
   gisBase <- "C:/Program Files (x86)/GRASS GIS 7.0.4-1"
