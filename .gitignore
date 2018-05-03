@@ -3,7 +3,7 @@
 .RData
 .Ruserdata
 #res
-data/GRASS
+data/GRASS/caldeirao/predictions/.tmp/
 data/R
 doc
 draw

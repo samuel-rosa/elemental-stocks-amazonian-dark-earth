@@ -1,0 +1,7 @@
+name: Universal Transverse Mercator
+proj: utm
+datum: wgs84
+ellps: wgs84
+zone: 20
+south: defined
+no_defs: defined

@@ -1,0 +1,16 @@
+COMMAND: v.in.ogr dsn="data/GRASS/caldeirao/predictions/.tmp/lgcs-mds" output="boundary" layer="boundary" min_area=0.0001 snap=-1
+GISDBASE: data/GRASS
+LOCATION: caldeirao MAPSET: predictions USER: lgcs-mds DATE: Thu Apr  7 10:06:38 2016
+-----------------------------------------------------
+1 input polygons
+Total area: 94456.4 (1 areas)
+Overlapping area: 0 (0 areas)
+Area without category: 0 (0 areas)
+---------------------------------------------------------------------------------
+COMMAND: v.db.connect --quiet -d map="boundary@predictions" driver="sqlite" database="$GISDBASE/$LOCATION_NAME/$MAPSET/sqlite/sqlite.db" table="boundary" key="cat" layer="1" separator="pipe"
+GISDBASE: data/GRASS
+LOCATION: caldeirao MAPSET: predictions USER: lgcs-mds DATE: Tue Sep  6 14:30:51 2016
+---------------------------------------------------------------------------------
+COMMAND: v.db.connect --quiet -o map="boundary@predictions" driver="sqlite" database="$GISDBASE/$LOCATION_NAME/$MAPSET/sqlite/sqlite.db" table="boundary" key="cat" layer="1" separator="pipe"
+GISDBASE: data/GRASS
+LOCATION: caldeirao MAPSET: predictions USER: lgcs-mds DATE: Tue Sep  6 14:30:51 2016
