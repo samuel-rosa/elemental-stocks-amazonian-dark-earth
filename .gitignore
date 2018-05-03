@@ -4,7 +4,6 @@
 .Ruserdata
 #res
 data/GRASS/caldeirao/predictions/.tmp/
-data/R
 doc
 draw
-res/fig
+res
