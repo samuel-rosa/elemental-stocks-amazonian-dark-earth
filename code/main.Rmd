@@ -14,6 +14,8 @@ library(dplyr)
 library(splines)
 library(ggplot2)
 
+# NOTE: must use car package version < 3.0-0
+
 # Start GRASS
 spgrass7::initGRASS(
   gisBase = gisBase, gisDbase = "../data/GRASS", location = "caldeirao", mapset = "predictions", 
@@ -56,8 +58,8 @@ pointData$pch <- ifelse(pointData$PRETIC == 1, 21, 1)
 pointData$col <- ifelse(pointData$PRETIC == 1, "red", "ivory")
 
 # Save point soil data
-save(pointData, file = "../data/R/pointData.rda")
-# load("data/R/pointData.rda")
+save(pointData, file = "../res/R/pointData.rda")
+# load("../res/R/pointData.rda")
 
 # Check spatial distribution
 sp::coordinates(pointData) <- ~ x + y
@@ -370,8 +372,7 @@ p <- sp::spplot(
     lattice::panel.text(profiles, labels = c("P1", "P2", "P3"), col = "black", cex = 0.75, pos = 1)
     lattice::panel.points(profiles, pch = 2, col = "black", cex = 0.75)
   })
-dev.off()
-png("res/fig/covar.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+png("../res/fig/covar.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
 p
 dev.off()
 rm(p, map, pts)
@@ -396,8 +397,8 @@ soil_var <- prepare_soil_data(pointData = pointData, sv = "TOPH", covar = covar)
 toph_anova <- get_lm_output(soil_var = soil_var, sv = "TOPH")
 
 # Save anova and lm results in a csv file
-res_anova <- rbind(cbind("tooc",  tooc_anova), cbind("toca", toca_anova), cbind("toph", toph_anova))
-write.csv(res_anova, file = "res/tab/anova.csv")
+res_anova <- rbind(cbind("tooc", tooc_anova), cbind("toca", toca_anova), cbind("toph", toph_anova))
+write.csv(res_anova, file = "../res/tab/anova.csv")
 
 rm(soil_var, res_anova, tooc_anova, toca_anova, toph_anova)
 ```
@@ -406,33 +407,33 @@ rm(soil_var, res_anova, tooc_anova, toca_anova, toph_anova)
 
 ```{r}
 # This first attempt is based on the use of nearest neighbour distances.
-pretic_dist <- SpatialTools::dist2(sp::coordinates(covar), pointData@coords[pointData$d == 10, ])
-pretic_dist <- apply(pretic_dist, 1, which.min)
-pretic_dist <- pointData@data[pointData$d == 10, "PRETIC"][pretic_dist]
-pretic_dist <- ifelse(is.na(covar$past_landuse), NA, pretic_dist)
-pretic_dist <- cbind(sp::coordinates(covar), pretic_dist)
-pretic_dist <- as.data.frame(pretic_dist)
-pretic_dist$pretic_dist <- ifelse(pretic_dist$pretic_dist == 1, "Pretic", "Adjacent")
-pretic_dist$pretic_dist <- as.factor(pretic_dist$pretic_dist)
-sp::gridded(pretic_dist) <- ~ s1 + s2
-
-# Save figure
-p <- sp::spplot(
-  pretic_dist,
-  col.regions = rev(gray.colors(2)),
-  colorkey = TRUE, scales = list(draw = TRUE),
-  xlab = "Easting (m)", ylab = "Northing (m)",
-  panel = function (...) {
-    lattice::panel.grid(h = -1, v = -1)
-    lattice::panel.levelplot(...)
-    lattice::panel.points(
-      pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
-  })
-dev.off()
-png("res/fig/pretic-dist.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
-p
-dev.off()
-rm(p, pretic_dist)
+# pretic_dist <- SpatialTools::dist2(sp::coordinates(covar), pointData@coords[pointData$d == 10, ])
+# pretic_dist <- apply(pretic_dist, 1, which.min)
+# pretic_dist <- pointData@data[pointData$d == 10, "PRETIC"][pretic_dist]
+# pretic_dist <- ifelse(is.na(covar$past_landuse), NA, pretic_dist)
+# pretic_dist <- cbind(sp::coordinates(covar), pretic_dist)
+# pretic_dist <- as.data.frame(pretic_dist)
+# pretic_dist$pretic_dist <- ifelse(pretic_dist$pretic_dist == 1, "Pretic", "Adjacent")
+# pretic_dist$pretic_dist <- as.factor(pretic_dist$pretic_dist)
+# sp::gridded(pretic_dist) <- ~ s1 + s2
+# 
+# # Save figure
+# p <- sp::spplot(
+#   pretic_dist,
+#   col.regions = rev(gray.colors(2)),
+#   colorkey = TRUE, scales = list(draw = TRUE),
+#   xlab = "Easting (m)", ylab = "Northing (m)",
+#   panel = function (...) {
+#     lattice::panel.grid(h = -1, v = -1)
+#     lattice::panel.levelplot(...)
+#     lattice::panel.points(
+#       pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
+#   })
+# dev.off()
+# png("../res/fig/pretic-dist.png", width = 480 * 4, height = 480 * 4, res = 72 * 4)
+# p
+# dev.off()
+# rm(p, pretic_dist)
 ```
 
 # Mixed effects modelling
@@ -484,21 +485,22 @@ tooc_plot <-
        ylab = "Semivariance (-)")
 tmp <- tooc_plot + addGridLines
 tooc_plot <- tmp + latticeExtra::as.layer(tooc_plot)
-dev.off()
-png("res/fig/tooc_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
+png("../res/fig/tooc_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
 tooc_plot
 dev.off()
 
 # save results
-save(tooc_vario, tooc_lmc, file = "data/R/tooc_vario.rda")
-# load("data/R/tooc_vario.rda")
+save(tooc_vario, tooc_lmc, file = "../res/R/tooc_vario.rda")
+```
 
-# make spatial predictions
+### Spatial precition and simulation
+
+```{r}
 t0 <- proc.time()
 tooc_pred <- predict(object = tooc_lmc, newdata = covar)
 proc.time() - t0
 tooc_pred <- back_transform(pred = tooc_pred, soil_data = tooc_data)
-save(tooc_pred, file = "data/R/tooc_pred.rda")
+save(tooc_pred, file = "../res/R/tooc_pred.rda")
 
 # make spatial simulations
 nsim <- 1000
@@ -530,15 +532,17 @@ p <- sp::spplot(
       pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
   })
 dev.off()
-png(filename = "res/fig/tooc-pretic.png", width = 480 * 4, height = 480 * 5, res = 72 * 5)
+png(filename = "../res/fig/tooc-pretic.png", width = 480 * 4, height = 480 * 5, res = 72 * 5)
 p
 dev.off()
-save(tooc_ade, file = "data/R/tooc_ade.rda")
+save(tooc_ade, file = "../res/R/tooc_ade.rda")
 rm(tooc_ade, tooc_sim, tooc_lim, p)
 gc()
+```
 
-# compute stocks
-# load("data/R/tooc_pred.rda")
+### Stock
+
+```{r}
 tooc_pred@data[, seq(2, 10, 2)] <-
   lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i] ^ 2 * tooc_pred@data[, seq(2, 10, 2)][, i] ^ 2 + 
@@ -562,7 +566,7 @@ tooc_pred@data$stock_var <- sqrt(rowSums(tooc_pred@data[, seq(2, 10, 2)] ^ 2))
 # save figure with depth-wise predictions
 map <- layer_predictions(tooc_pred, "pred")
 dev.off()
-png(filename = "res/fig/tooc_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+png(filename = "../res/fig/tooc_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
@@ -570,7 +574,7 @@ rm(map)
 # save figure with depth-wise prediction error standard deviation
 map <- layer_predictions(tooc_pred, "var")
 dev.off()
-png(filename = "res/fig/tooc_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+png(filename = "../res/fig/tooc_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
@@ -578,7 +582,7 @@ rm(map)
 # save figure with profile predictions
 map <- profile_predictions(tooc_pred, "stock")
 dev.off()
-png(filename = "res/fig/tooc_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+png(filename = "../res/fig/tooc_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
@@ -586,7 +590,7 @@ rm(map)
 # save figure with profile prediction error standard deviation
 map <- profile_predictions(tooc_pred, "stock_var", col.regions = uncertainty.colors)
 dev.off()
-png(filename = "res/fig/tooc_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+png(filename = "../res/fig/tooc_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
@@ -634,20 +638,20 @@ plot(camg_vario$v, camg_lmc, scales = list(relation = "same"), pch = 20, cex = 0
 # tmp <- camg_plot + addGridLines
 # camg_plot <- tmp + latticeExtra::as.layer(camg_plot)
 # dev.off()
-# png("res/fig/camg_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
+# png("../res/fig/camg_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
 # camg_plot
 # dev.off()
 
 # save results
-# save(camg_vario, camg_lmc, file = "data/R/camg_vario.rda")
-# load("data/R/camg_vario.rda")
+# save(camg_vario, camg_lmc, file = "../res/R/camg_vario.rda")
+# load("../res/R/camg_vario.rda")
 
 # make spatial predictions
 # t0 <- proc.time()
 # camg_pred <- predict(object = camg_lmc, newdata = covar)
 # proc.time() - t0
 # camg_pred <- back_transform(pred = camg_pred, soil_data = camg_data)
-# save(camg_pred, file = "data/R/camg_pred.rda")
+# save(camg_pred, file = "../res/R/camg_pred.rda")
 
 # make spatial simulations
 nsim <- 1000
@@ -680,15 +684,15 @@ p <- sp::spplot(
       pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
   })
 dev.off()
-png(filename = "res/fig/camg-pretic.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
+png(filename = "../res/fig/camg-pretic.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
 p
 dev.off()
-save(camg_ade, file = "data/R/camg_ade.rda")
+save(camg_ade, file = "../res/R/camg_ade.rda")
 rm(camg_ade, camg_lim, p)
 gc()
 
 # # compute stocks
-# # load("data/R/camg_pred.rda")
+# # load("../res/R/camg_pred.rda")
 # camg_pred@data[, seq(2, 10, 2)] <- 
 #   lapply(1:5, function (i) {
 #     0.2 * sqrt(bude$mean[i]^2 * camg_pred@data[, seq(2, 10, 2)][, i]^2 + 
@@ -705,7 +709,7 @@ gc()
 # # save figure with depth-wise predictions
 # map <- layer_predictions(camg_pred, "pred")
 # dev.off()
-# png(filename = "res/fig/camg_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+# png(filename = "../res/fig/camg_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 # map
 # dev.off()
 # rm(map)
@@ -713,7 +717,7 @@ gc()
 # # save figure with depth-wise prediction error standard deviation
 # map <- layer_predictions(camg_pred, "var")
 # dev.off()
-# png(filename = "res/fig/camg_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+# png(filename = "../res/fig/camg_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 # map
 # dev.off()
 # rm(map)
@@ -721,7 +725,7 @@ gc()
 # # save figure with profile predictions
 # map <- profile_predictions(camg_pred, "stock")
 # dev.off()
-# png(filename = "res/fig/camg_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+# png(filename = "../res/fig/camg_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 # map
 # dev.off()
 # rm(map)
@@ -729,7 +733,7 @@ gc()
 # # save figure with profile prediction error standard deviation
 # map <- profile_predictions(camg_pred, "stock_var", col.regions = uncertainty.colors)
 # dev.off()
-# png(filename = "res/fig/camg_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+# png(filename = "../res/fig/camg_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 # map
 # dev.off()
 # rm(map)
@@ -777,20 +781,20 @@ plot(exph_vario$v, exph_lmc, scales = list(relation = "same"), pch = 20, cex = 0
 # tmp <- exph_plot + addGridLines
 # exph_plot <- tmp + latticeExtra::as.layer(exph_plot)
 # dev.off()
-# png("res/fig/exph_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
+# png("../res/fig/exph_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
 # exph_plot
 # dev.off()
 
 # save results
-# save(exph_vario, exph_lmc, file = "data/R/exph_vario.rda")
-# load("data/R/exph_vario.rda")
+# save(exph_vario, exph_lmc, file = "../res/R/exph_vario.rda")
+# load("../res/R/exph_vario.rda")
 
 # make spatial predictions
 # t0 <- proc.time()
 # exph_pred <- predict(object = exph_lmc, newdata = covar)
 # proc.time() - t0
 # exph_pred <- back_transform(pred = exph_pred, soil_data = exph_data)
-# save(exph_pred, file = "data/R/exph_pred.rda")
+# save(exph_pred, file = "../res/R/exph_pred.rda")
 
 # make spatial simulations
 nsim <- 1000
@@ -824,15 +828,15 @@ p <- sp::spplot(
       pointData@coords[pointData$d == 10, ], pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5)
   })
 dev.off()
-png(filename = "res/fig/exph-pretic.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
+png(filename = "../res/fig/exph-pretic.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
 p
 dev.off()
-save(exph_ade, file = "data/R/exph_ade.rda")
+save(exph_ade, file = "../res/R/exph_ade.rda")
 rm(exph_ade, exph_lim, p)
 gc()
 
 # # compute stocks
-# # load("data/R/exph_pred.rda")
+# # load("../res/R/exph_pred.rda")
 # exph_pred@data[, seq(2, 10, 2)] <- 
 #   lapply(1:5, function (i) {
 #     0.2 * sqrt(bude$mean[i]^2 * exph_pred@data[, seq(2, 10, 2)][, i]^2 + 
@@ -849,7 +853,7 @@ gc()
 # # save figure with depth-wise predictions
 # map <- layer_predictions(exph_pred, "pred")
 # dev.off()
-# png(filename = "res/fig/exph_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+# png(filename = "../res/fig/exph_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 # map
 # dev.off()
 # rm(map)
@@ -857,7 +861,7 @@ gc()
 # # save figure with depth-wise prediction error standard deviation
 # map <- layer_predictions(exph_pred, "var")
 # dev.off()
-# png(filename = "res/fig/exph_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+# png(filename = "../res/fig/exph_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 # map
 # dev.off()
 # rm(map)
@@ -865,7 +869,7 @@ gc()
 # # save figure with profile predictions
 # map <- profile_predictions(exph_pred, "stock")
 # dev.off()
-# png(filename = "res/fig/exph_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+# png(filename = "../res/fig/exph_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 # map
 # dev.off()
 # rm(map)
@@ -873,7 +877,7 @@ gc()
 # # save figure with profile prediction error standard deviation
 # map <- profile_predictions(exph_pred, "stock_var", col.regions = uncertainty.colors)
 # dev.off()
-# png(filename = "res/fig/exph_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+# png(filename = "../res/fig/exph_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 # map
 # dev.off()
 # rm(map)
@@ -881,22 +885,33 @@ gc()
 
 ## Pretic probability
 
+### Load data
+
+```{r}
+# load("../res/R/tooc_ade.rda")
+# load("../res/R/camg_ade.rda")
+# load("../res/R/exph_ade.rda")
+```
+
+### Process data
+
 ```{r}
 # process data
-load("data/R/tooc_ade.rda")
-load("data/R/camg_ade.rda")
-load("data/R/exph_ade.rda")
 pretic <- raster::brick(list(raster::raster(tooc_ade), raster::raster(camg_ade), raster::raster(exph_ade)))
-# sp::spplot(pretic)
-# pretic <- min(pretic)
+#sp::spplot(pretic)
 pretic <- prod(pretic)
 pretic <- as(pretic, "SpatialPixelsDataFrame")
+#sp::spplot(pretic)
 rm(tooc_ade, camg_ade, exph_ade)
 gc()
 p <- 0.9
 pretic$pretic <- as.factor(ifelse(pretic$layer >= p, "Pretic", "Adjacent"))
 summary(pretic$pretic)
+```
 
+### Figure
+
+```{r}
 # prepare figure
 min <- apply(pretic@coords, 2, min)
 pretic@coords[, 1] <- pretic@coords[, 1] - min[1]
@@ -914,16 +929,11 @@ p <- sp::spplot(
     lattice::panel.grid(h = -1, v = -1)
     lattice::panel.levelplot(...)
   }) + 
-  # latticeExtra::as.layer(lattice::contourplot(
-    # layer ~ x + y, as.data.frame(pretic), at = c(0.25, 0.50, 0.75), col = "black", labels = FALSE)) +
-  # latticeExtra::layer(
-    # lattice::panel.text(x = c(208, 262), y = c(350, 250), labels = "0.50", cex = 0.75)) +
   latticeExtra::layer(
     lattice::panel.points(pts, pch = 21, fill = "lightgray", col.symbol = "black", cex = 0.5))
 
 # save figure
-dev.off()
-png(filename = "res/fig/pretic-prob.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
+png(filename = "../res/fig/pretic-prob.png", width = 480 * 4.1, height = 480 * 5, res = 72 * 5)
 p
 dev.off()
 rm(p, pts)
@@ -975,22 +985,22 @@ toca_plot <-
 tmp <- toca_plot + addGridLines
 toca_plot <- tmp + latticeExtra::as.layer(toca_plot)
 dev.off()
-png("res/fig/toca_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
+png("../res/fig/toca_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
 toca_plot
 dev.off()
 
 # save results
-save(toca_vario, toca_lmc, file = "data/R/toca_vario.rda")
+save(toca_vario, toca_lmc, file = "../res/R/toca_vario.rda")
 
 # make spatial predictions
 t0 <- proc.time()
 toca_pred <- predict(object = toca_lmc, newdata = covar)
 proc.time() - t0
 toca_pred <- back_transform(pred = toca_pred, soil_data = toca_data)
-save(toca_pred, file = "data/R/toca_pred.rda")
+save(toca_pred, file = "../res/R/toca_pred.rda")
 
 # compute stocks
-# load("data/R/toca_pred.rda")
+# load("../res/R/toca_pred.rda")
 toca_pred@data[, seq(2, 10, 2)] <- 
   lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i]^2 * toca_pred@data[, seq(2, 10, 2)][, i]^2 + 
@@ -1010,7 +1020,7 @@ write.csv(pretic_stats(pretic, toca_pred), file = 'res/tab/stock-stats-toca.csv'
 # save figure with depth-wise predictions
 map <- layer_predictions(toca_pred, "pred")
 dev.off()
-png(filename = "res/fig/toca_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+png(filename = "../res/fig/toca_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
@@ -1018,7 +1028,7 @@ rm(map)
 # save figure with depth-wise prediction error standard deviation
 map <- layer_predictions(toca_pred, "var")
 dev.off()
-png(filename = "res/fig/toca_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+png(filename = "../res/fig/toca_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
@@ -1026,7 +1036,7 @@ rm(map)
 # save figure with profile predictions
 map <- profile_predictions(toca_pred, "stock")
 dev.off()
-png(filename = "res/fig/toca_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+png(filename = "../res/fig/toca_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
@@ -1034,7 +1044,7 @@ rm(map)
 # save figure with profile prediction error standard deviation
 map <- profile_predictions(toca_pred, "stock_var", col.regions = uncertainty.colors)
 dev.off()
-png(filename = "res/fig/toca_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+png(filename = "../res/fig/toca_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
@@ -1082,23 +1092,23 @@ toph_plot <-
 tmp <- toph_plot + addGridLines
 toph_plot <- tmp + latticeExtra::as.layer(toph_plot)
 dev.off()
-png("res/fig/toph_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
+png("../res/fig/toph_cross_vario.png", width = 480 * 3, height = 480 * 3, res = 72 * 3)
 toph_plot
 dev.off()
 
 # save results
-save(toph_vario, toph_lmc, file = "data/R/toph_vario.rda")
-# load("data/R/toph_vario.rda")
+save(toph_vario, toph_lmc, file = "../res/R/toph_vario.rda")
+# load("../res/R/toph_vario.rda")
 
 # make spatial predictions
 t0 <- proc.time()
 toph_pred <- predict(object = toph_lmc, newdata = covar)
 proc.time() - t0
 toph_pred <- back_transform(pred = toph_pred, soil_data = toph_data)
-save(toph_pred, file = "data/R/toph_pred.rda")
+save(toph_pred, file = "../res/R/toph_pred.rda")
 
 # compute stocks
-# load("data/R/toph_pred.rda")
+# load("../res/R/toph_pred.rda")
 toph_pred@data[, seq(2, 10, 2)] <- 
   lapply(1:5, function (i) {
     0.2 * sqrt(bude$mean[i]^2 * toph_pred@data[, seq(2, 10, 2)][, i]^2 + 
@@ -1118,7 +1128,7 @@ write.csv(pretic_stats(pretic, toph_pred), file = 'res/tab/stock-stats-toph.csv'
 # save figure with depth-wise predictions
 map <- layer_predictions(toph_pred, "pred")
 dev.off()
-png(filename = "res/fig/toph_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+png(filename = "../res/fig/toph_pred.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
@@ -1126,7 +1136,7 @@ rm(map)
 # save figure with depth-wise prediction error standard deviation
 map <- layer_predictions(toph_pred, "var")
 dev.off()
-png(filename = "res/fig/toph_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
+png(filename = "../res/fig/toph_sd.png", height = 480 * 1.4, width = 480 * 4, res = 72 * 3)
 map
 dev.off()
 rm(map)
@@ -1134,7 +1144,7 @@ rm(map)
 # save figure with profile predictions
 map <- profile_predictions(toph_pred, "stock", col.regions = soil.colors)
 dev.off()
-png(filename = "res/fig/toph_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+png(filename = "../res/fig/toph_pred_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
@@ -1142,7 +1152,7 @@ rm(map)
 # save figure with profile prediction error standard deviation
 map <- profile_predictions(toph_pred, "stock_var", col.regions = uncertainty.colors)
 dev.off()
-png(filename = "res/fig/toph_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
+png(filename = "../res/fig/toph_sd_profile.png", width = 480 * 4, height = 480 * 5, res = 72 * 6)
 map
 dev.off()
 rm(map)
