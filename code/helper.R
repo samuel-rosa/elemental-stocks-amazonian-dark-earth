@@ -22,13 +22,13 @@ grassGis <- function (cmd) {
 
 # Prepare depth-wise box-and-whisker plots -----
 depth_bwplot <-
-  function (pts = pointData, vars = c("TOOC", "TOCA", "TOPH"), ...) {
+  function (pts = pointData, vars = c("TOOC", "TOCA", "TOPH"), depth.var = "d", ...) {
     
     # Pre-process SpatialPointsDataFrame
-    tmp <- as.data.frame(pointData)[, c("d", vars)]
+    tmp <- as.data.frame(pts)[, c(depth.var, vars)]
     
     # Stack soil variables
-    tmp <- cbind(d = rep(tmp$d, length(vars)), stack(x = tmp, select = vars))
+    tmp <- cbind(d = rep(tmp[[depth.var]], length(vars)), stack(x = tmp, select = vars))
     
     # Create bwplot
     a <- lattice::bwplot(
@@ -60,15 +60,18 @@ uncertainty.colors <-
 
 # Prepare soil data for modelling ----
 prepare_soil_data <- 
-  function (pointData, sv = "TOOC", covar, save4back = FALSE) {
+  function (pointData, sv = "TOOC", covar, save4back = FALSE, id.var = "stake", depth.var = "d") {
+    
+    # Record the name of the coordinates
+    coord_names <- colnames(pointData@coords)
     
     # Soil variables have a skeewed distribution and have to be transformed.
     # We add one unit to its values to avoid zeros. This is necessary to perform the Box-Cox transformations.
-    soil_var <- pointData@data[, c("stake", "d", sv)]
+    soil_var <- pointData@data[, c(id.var, depth.var, sv)]
     soil_var[, sv] <- soil_var[, sv] + 1 
     
     # Create five new variables based on sampling depth.
-    soil_var <- reshape(soil_var, idvar = "stake", timevar = "d", direct = "wide")
+    soil_var <- reshape(soil_var, idvar = id.var, timevar = depth.var, direct = "wide")
     
     # Lambda values of the Box-Cox transformation are estimated for each depth-variable separately. Negative 
     # lambda values are set to zero to avoid problems with the back-transform (see Samuel-Rosa et al. (2015)
@@ -89,7 +92,7 @@ prepare_soil_data <-
     
     # Get coordinates and set the coordinate reference system
     soil_var <- cbind(soil_var, pointData@coords[(1:nrow(soil_var)) * 5, ])
-    sp::coordinates(soil_var) <- ~ x + y
+    sp::coordinates(soil_var) <- coord_names
     sp::proj4string(soil_var) <- sp::proj4string(covar)
     
     # Sample covariate at calibration points
