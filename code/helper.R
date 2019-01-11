@@ -22,7 +22,8 @@ grassGis <- function (cmd) {
 
 # Prepare depth-wise box-and-whisker plots -----
 depth_bwplot <-
-  function (pts = pointData, vars = c("TOOC", "TOCA", "TOPH"), depth.var = "d", ...) {
+  function (pts = pointData, vars = c("TOOC", "TOCA", "TOPH"), depth.var = "d",
+            ylab = "Sampling depth (cm)", xlab = "Value", ...) {
     
     # Pre-process SpatialPointsDataFrame
     tmp <- as.data.frame(pts)[, c(depth.var, vars)]
@@ -32,9 +33,8 @@ depth_bwplot <-
     
     # Create bwplot
     a <- lattice::bwplot(
-      rev(d) ~ values | ind, data = tmp, ylab = "Sampling depth (cm)", 
+      rev(d) ~ values | ind, data = tmp, ylab = ylab, xlab = xlab,
       scales = list(y = "same", x = "free", alternating = FALSE), 
-      xlab = "Value",
       # xlab = expression(paste('Content (g ',kg^-1,')', sep = '')),
       par.settings = list(
         fontsize = list(text = 14, points = 8), box.rectangle = list(col = "black"),
@@ -251,7 +251,7 @@ addGridLines <- latticeExtra::layer(lattice::panel.grid(h = -1, v = -1))
 
 # Prepare figure with depth-wise predictions ----
 layer_predictions <-
-  function (x, var, main = "") {
+  function (x, var, main = "", pts = pointData, depth.var = "d") {
     
     if (var == "pred") {
       var <- seq(1, 9, 2)
@@ -272,7 +272,7 @@ layer_predictions <-
         lattice::panel.levelplot(...)
         d <- depth[lattice::panel.number()]
         lattice::panel.points(
-          pointData@coords[pointData$d == d, ], cex = 0.25, lwd = 0.5,
+          pts@coords[pts@data[, depth.var] == d, ], cex = 0.25, lwd = 0.5,
           # fill = pointData$col[pointData$d == d], col = pointData$col[pointData$d == d],
           # pch = pointData$pch[pointData$d == d] 
           col = "black", fill = "lightgray", pch = 21)
